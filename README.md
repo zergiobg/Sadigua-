@@ -46,8 +46,8 @@ El código fuente, la interfaz gráfica web SPA, los cartuchos normativos y el m
 
 ### Paso 1: Clonar el Repositorio
 ```bash
-git clone https://github.com/Zergiobg/Sadigua.git
-cd Sadigua
+git clone https://github.com/zergiobg/Sadigua-.git
+cd Sadigua-
 ```
 
 ### Paso 2: Configurar el Entorno Virtual e Instalar Dependencias
