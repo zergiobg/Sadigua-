@@ -914,3 +914,228 @@ body {
     gap: 8px;
     animation: fadeIn 0.3s ease-out;
 }
+
+/* -------------------------------------------------------------
+   MODO COMPARATIVO PEDAGÓGICO (ARENA LOCAL VS GEMINI)
+   ------------------------------------------------------------- */
+.btn-compare-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1.5px solid #CBD5E1;
+    background: #F8FAFC;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-compare-toggle:hover {
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+.btn-compare-toggle.active {
+    background: #EFF6FF;
+    border-color: #2563EB;
+    color: #1D4ED8;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.chat-container.comparison-wide {
+    max-width: 1380px;
+    transition: max-width 0.3s ease;
+}
+
+.comparison-active-banner {
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: var(--radius-md);
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    animation: fadeIn 0.3s ease;
+}
+
+.comparison-arena {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    margin: 14px 0 20px 0;
+    align-items: stretch;
+}
+
+@media (max-width: 900px) {
+    .comparison-arena {
+        grid-template-columns: 1fr;
+    }
+}
+
+.arena-col {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s ease;
+}
+
+.arena-col.local {
+    border-top: 4px solid #1D4ED8;
+    background: #FAFBFD;
+}
+
+.arena-col.gemini {
+    border-top: 4px solid #7C3AED;
+    background: #FFFFFF;
+}
+
+.arena-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid #E2E8F0;
+    background: #F8FAFC;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.arena-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.arena-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.arena-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    color: #FFFFFF;
+}
+
+.arena-avatar.local {
+    background: #1D4ED8;
+}
+
+.arena-avatar.gemini {
+    background: #7C3AED;
+}
+
+.arena-model-name {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.arena-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.arena-metric-pill {
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    color: var(--text-primary);
+}
+
+.arena-metric-pill.timer {
+    color: var(--primary-blue);
+    border-color: #93C5FD;
+}
+
+.arena-metric-pill.speed {
+    color: #059669;
+    border-color: #A7F3D0;
+}
+
+.arena-body {
+    padding: 16px;
+    flex: 1;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-primary);
+    overflow-y: auto;
+    max-height: 550px;
+}
+
+.arena-footer {
+    padding: 10px 14px;
+    border-top: 1px solid #E2E8F0;
+    background: #F8FAFC;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.arena-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-style: italic;
+    padding: 20px 0;
+}
+
+.comparison-summary-card {
+    background: #F8FAFC;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 10px;
+    padding: 16px;
+    margin: 8px 0 20px 0;
+    box-shadow: var(--shadow-sm);
+    animation: fadeIn 0.4s ease;
+}
+
+.comparison-summary-card h4 {
+    color: var(--primary-blue);
+    margin: 0 0 10px 0;
+    font-size: 14.5px;
+}
+
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: 8px 12px;
+    border: 1px solid #E2E8F0;
+    text-align: left;
+}
+
+.comparison-table th {
+    background: #EDF2F7;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.comparison-table tr:hover {
+    background: #F1F5F9;
+}

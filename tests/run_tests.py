@@ -25,6 +25,7 @@ from tests.test_progressive_and_cache import (
     test_progressive_stream_orchestrator
 )
 from tests.test_thought_completion import test_thought_completion_detector
+from tests.test_gemini_comparison_endpoint import run_tests as test_gemini_comparison_endpoint
 
 def run_all():
     tests = [
@@ -43,6 +44,7 @@ def run_all():
         ("API REST: CRUD de Bóveda Obsidian (Expedientes)", test_api_vault_crud),
         ("API REST: Catálogo de Precedentes / Consultas", test_api_vault_consultas),
         ("API REST: Endpoint Streaming SSE Progresivo", test_api_chat_progressive),
+        ("API REST: Endpoint Streaming SSE Gemini Comparativo", test_gemini_comparison_endpoint),
     ]
 
     passed = 0

@@ -69,14 +69,18 @@
         <main class="content-view active" id="tab-chat">
             <div class="chat-container">
                 <div class="chat-banner" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                         <label class="switch-label">
                             <input type="checkbox" id="chk-anonymize" checked>
-                            <span>🛡️ Anonimización PII (Ley 1581)</span>
+                            <span>🛡️ Anonimización PII</span>
                         </label>
                         <span class="badge badge-green" id="chat-grounding-indicator">
-                            ✓ Anti-Alucinaciones Activo
+                            ✓ Anti-Alucinaciones
                         </span>
+                        <button type="button" id="btn-toggle-comparison" class="btn-compare-toggle" title="Dividir pantalla para comparar en paralelo Modelo Local vs Google Gemini">
+                            <span class="compare-icon">⚖️</span>
+                            <span id="compare-toggle-label">Modo Comparativo: Inactivo</span>
+                        </button>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <label for="quick-model-select" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Modelo Local:</label>
@@ -85,6 +89,22 @@
                             <option value="qwen2.5:7b-instruct" selected>⚖️ Qwen 2.5 7B (Equilibrado ~9 tok/s)</option>
                             <option value="qwen2.5:14b-instruct">🏛️ Qwen 2.5 14B (Alta Elocuencia 32GB+)</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- BANNER INFORMATIVO: MODO COMPARATIVO ACTIVO -->
+                <div id="comparison-active-banner" class="comparison-active-banner hidden">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 18px;">⚖️</span>
+                            <div>
+                                <strong style="color: var(--primary-blue); font-size: 13px;">Arena Pedagógica Activa: Modelo Local Soberano vs Google Gemini Cloud</strong>
+                                <p style="margin: 0; font-size: 11.5px; color: var(--text-secondary);">
+                                    Ambos modelos responderán en paralelo a la misma consulta con el mismo corpus normativo, cotejando soberanía, costo ($0 vs API), tiempo y precisión jurídica.
+                                </p>
+                            </div>
+                        </div>
+                        <span class="badge badge-blue">Pantalla Dividida (50/50)</span>
                     </div>
                 </div>
 
@@ -302,35 +322,63 @@
                     </label>
                 </div>
 
-                <div class="settings-card">
-                    <h3>Motor de Inferencia Activo</h3>
+                <!-- TARJETA 2: CREDENCIALES GOOGLE GEMINI (SIEMPRE VISIBLE PARA MODO COMPARATIVO) -->
+                <div class="settings-card" id="card-gemini-credentials" style="border-left: 4px solid var(--primary-accent);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <h3 style="margin: 0; color: var(--primary-blue);">🌐 Credenciales de Google Gemini</h3>
+                        <span class="badge" id="gemini-status-badge" style="background: #FEF3C7; color: #92400E;">⚠️ Clave No Configurada</span>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+                        Esta clave habilita la <strong>segunda columna en el Modo Comparativo Pedagógico</strong> del Consultorio Jurídico, 
+                        permitiendo contrastar lado a lado la calidad, latencia, costos y soberanía de datos del modelo local frente a Gemini.
+                    </p>
+
                     <div class="form-group">
-                        <label>Proveedor:</label>
-                        <select id="cfg-provider" class="form-control">
-                            <option value="gemini">Google Gemini (Cloud Híbrido / Alta Velocidad)</option>
-                            <option value="local">Motor Local Soberano (Ollama / Llama.cpp 100% Offline)</option>
+                        <label for="cfg-gemini-key">Clave de API de Gemini (GEMINI_API_KEY):</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="password" id="cfg-gemini-key" class="form-control" placeholder="Pega tu clave AIzaSy... aquí" style="font-family: monospace;">
+                            <button type="button" id="btn-toggle-gemini-key" class="filter-btn" style="padding: 0 14px; height: 38px;" title="Mostrar / Ocultar Clave">👁️</button>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 11px;">Se almacena de forma segura en el archivo .env de tu entorno local.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cfg-gemini-model">Modelo Gemini Cloud:</label>
+                        <select id="cfg-gemini-model" class="form-control">
+                            <option value="gemini-2.5-flash" selected>⚡ Gemini 2.5 Flash (Recomendado para comparación rápida)</option>
+                            <option value="gemini-2.0-flash">🚀 Gemini 2.0 Flash</option>
+                            <option value="gemini-2.5-pro">🏛️ Gemini 2.5 Pro (Alta capacidad analítica)</option>
                         </select>
                     </div>
 
-                    <div id="cfg-gemini-fields">
-                        <div class="form-group">
-                            <label>Clave de API de Gemini (GEMINI_API_KEY):</label>
-                            <input type="password" id="cfg-gemini-key" class="form-control" placeholder="Pega tu API Key de Gemini aquí">
-                            <small style="color: var(--text-muted); font-size: 11px;">Se almacena de forma segura en tu entorno local.</small>
-                        </div>
-                        <div class="form-group">
-                            <label>Modelo Gemini:</label>
-                            <input type="text" id="cfg-gemini-model" class="form-control" value="gemini-2.5-flash">
-                        </div>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn-primary" id="btn-save-gemini-key" style="background: var(--primary-blue);">
+                            💾 Guardar Clave Gemini
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TARJETA 3: MOTOR DE INFERENCIA PRINCIPAL -->
+                <div class="settings-card">
+                    <h3>Motor de Inferencia Principal del Sistema</h3>
+                    <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 12px;">
+                        Define qué motor atenderá por defecto las consultas cuando el Modo Comparativo esté inactivo.
+                    </p>
+                    <div class="form-group">
+                        <label for="cfg-provider">Proveedor Principal:</label>
+                        <select id="cfg-provider" class="form-control">
+                            <option value="local" selected>🏠 Motor Local Soberano (Ollama / 100% Offline — Recomendado)</option>
+                            <option value="gemini">🌐 Google Gemini (Cloud Híbrido — Requiere activar Compuerta)</option>
+                        </select>
                     </div>
 
-                    <div id="cfg-local-fields" style="display: none;">
+                    <div id="cfg-local-fields">
                         <div class="form-group">
-                            <label>URL del Servidor Local (Ollama / llama.cpp):</label>
+                            <label for="cfg-local-url">URL del Servidor Local (Ollama / llama.cpp):</label>
                             <input type="text" id="cfg-local-url" class="form-control" value="http://localhost:11434/v1">
                         </div>
                         <div class="form-group">
-                            <label>Modelo Local Cuantizado (GGUF):</label>
+                            <label for="cfg-local-model">Modelo Local Cuantizado (GGUF):</label>
                             <select id="cfg-local-model" class="form-control">
                                 <option value="qwen2.5:3b-instruct">⚡ Qwen 2.5 3B Instruct (Ultra-rápido en CPU / ~25-35 tok/s / 1.9 GB)</option>
                                 <option value="qwen2.5:7b-instruct" selected>⚖️ Qwen 2.5 7B Instruct (Equilibrado / Alta precisión / 4.7 GB)</option>
@@ -339,7 +387,9 @@
                         </div>
                     </div>
 
-                    <button class="btn-primary" id="btn-save-config">Guardar y Aplicar Configuración</button>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+                        <button class="btn-primary" id="btn-save-config">Guardar y Aplicar Motor Principal</button>
+                    </div>
                 </div>
 
                 <div class="settings-card">

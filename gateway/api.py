@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 
 from config.settings import settings
 from core.engine.factory import get_llm_engine
+from core.engine.gemini_engine import GeminiEngine
+from core.agents.grounding_check import GroundingValidator
 from core.rag.bm25_index import PureBM25Index
 from core.rag.vector_store import LocalVectorStore
 from core.rag.hybrid_retriever import HybridRetriever
@@ -52,6 +54,22 @@ orchestrator = SadiguaOrchestrator(
     vault_manager=vault_manager
 )
 
+def _persist_env_var(key: str, value: str):
+    env_path = settings.BASE_DIR / ".env"
+    lines = []
+    found = False
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line_s = line.strip()
+            if line_s.startswith(f"{key}=") or line_s.startswith(f"{key} ="):
+                lines.append(f"{key}={value}")
+                found = True
+            else:
+                lines.append(line)
+    if not found:
+        lines.append(f"{key}={value}")
+    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 # Modelos Pydantic para peticiones
 class ChatRequest(BaseModel):
     message: str = Field(..., description="Consulta del usuario")
@@ -61,7 +79,7 @@ class SwitchCartridgeRequest(BaseModel):
     cartridge_id: str = Field(..., description="ID del cartucho a activar")
 
 class ConfigUpdateRequest(BaseModel):
-    llm_provider: str = Field(..., description="'gemini' o 'local'")
+    llm_provider: Optional[str] = Field(default=None, description="'gemini' o 'local'")
     cloud_egress_enabled: Optional[bool] = Field(default=None, description="Compuerta de Soberanía para permitir salida a nube")
     gemini_api_key: Optional[str] = None
     gemini_model: Optional[str] = None
@@ -98,13 +116,16 @@ async def startup_event():
 def get_system_status():
     from core.hardware.detector import HardwareProfiler
     hw = HardwareProfiler.profile()
+    key_val = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY", "")
+    masked_key = f"{key_val[:6]}...{key_val[-4:]}" if len(key_val) > 10 else ("Configurada" if key_val else "")
     return {
         "status": "online",
         "provider": settings.LLM_PROVIDER,
         "cloud_egress_enabled": settings.CLOUD_EGRESS_ENABLED,
         "active_cartridge": settings.ACTIVE_CARTRIDGE,
         "gemini_model": settings.GEMINI_MODEL,
-        "gemini_configured": bool(settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY")),
+        "gemini_configured": bool(key_val),
+        "gemini_masked_key": masked_key,
         "local_model": settings.LOCAL_MODEL,
         "local_base_url": settings.LOCAL_BASE_URL,
         "vault_path": str(settings.VAULT_PATH),
@@ -120,22 +141,29 @@ def get_hardware_profile():
 @app.post("/api/system/config")
 def update_system_config(req: ConfigUpdateRequest):
     global orchestrator
-    if req.llm_provider not in ["gemini", "local"]:
-        raise HTTPException(status_code=400, detail="Proveedor inválido. Use 'gemini' o 'local'.")
+    if req.llm_provider is not None:
+        if req.llm_provider not in ["gemini", "local"]:
+            raise HTTPException(status_code=400, detail="Proveedor inválido. Use 'gemini' o 'local'.")
+        settings.LLM_PROVIDER = req.llm_provider
 
     if req.cloud_egress_enabled is not None:
         settings.CLOUD_EGRESS_ENABLED = req.cloud_egress_enabled
 
-    settings.LLM_PROVIDER = req.llm_provider
     if req.gemini_api_key is not None:
-        settings.GEMINI_API_KEY = req.gemini_api_key
-        os.environ["GEMINI_API_KEY"] = req.gemini_api_key
+        cleaned_key = req.gemini_api_key.strip()
+        settings.GEMINI_API_KEY = cleaned_key
+        os.environ["GEMINI_API_KEY"] = cleaned_key
+        if cleaned_key:
+            _persist_env_var("GEMINI_API_KEY", cleaned_key)
+
     if req.gemini_model:
-        settings.GEMINI_MODEL = req.gemini_model
+        settings.GEMINI_MODEL = req.gemini_model.strip()
+        _persist_env_var("GEMINI_MODEL", settings.GEMINI_MODEL)
+
     if req.local_base_url:
-        settings.LOCAL_BASE_URL = req.local_base_url
+        settings.LOCAL_BASE_URL = req.local_base_url.strip()
     if req.local_model:
-        settings.LOCAL_MODEL = req.local_model
+        settings.LOCAL_MODEL = req.local_model.strip()
 
     # Reiniciar motor en el orquestador verificando compuerta
     try:
@@ -197,6 +225,119 @@ async def chat_progressive_endpoint(request: ChatRequest):
 
     return StreamingResponse(
         sse_event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+@app.post("/api/chat/gemini-stream")
+async def chat_gemini_stream_endpoint(request: ChatRequest):
+    """
+    Endpoint SSE pedagógico para comparación paralela en tiempo real
+    entre el Modelo Local Soberano y Google Gemini Cloud.
+    """
+    user_query = request.message.strip()
+    if not user_query:
+        raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío.")
+
+    api_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        async def err_stream():
+            msg = "Clave de API de Gemini (GEMINI_API_KEY) no configurada. Ingrésala en la sección 'Configuración MLOps' para habilitar la columna de comparación."
+            yield f"data: {json.dumps({'type': 'error', 'message': msg}, ensure_ascii=False)}\n\n"
+        return StreamingResponse(
+            err_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+        )
+
+    mapping = {}
+    if request.anonymize:
+        user_query, mapping = PIIAnonymizer.mask(user_query)
+
+    async def sse_gemini_stream():
+        import time
+        start_time = time.time()
+        ttft = None
+        token_count = 0
+        full_text = ""
+        try:
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'gemini_retrieval', 'message': 'Recuperando contexto normativo idéntico para competencia justa...'}, ensure_ascii=False)}\n\n"
+
+            # Recuperar los mismos documentos normativos para que la evaluación sea 100% ecuánime
+            candidates = await retriever.retrieve(user_query, top_k=6)
+            retrieved_docs = reranker.rerank(user_query, candidates, top_n=3)
+
+            context_blocks = []
+            for idx, doc in enumerate(retrieved_docs, start=1):
+                source_label = doc.get("source", "Norma")
+                section_label = doc.get("section", "")
+                art_label = doc.get("articulo", "")
+                header = f"[Fuente {idx}: {source_label} | {art_label or section_label}]"
+                context_blocks.append(f"{header}\n{doc.get('content', '')}")
+            context_str = "\n\n---\n\n".join(context_blocks)
+
+            yield f"data: {json.dumps({'type': 'phase', 'phase': 'gemini_start', 'message': 'Conectando con Google Gemini en la nube...'}, ensure_ascii=False)}\n\n"
+
+            gemini_prompt = (
+                f"CONSULTA DEL USUARIO / CASO JURÍDICO:\n{user_query}\n\n"
+                f"FUENTES NORMATIVAS Y JURISPRUDENCIALES CURADAS DISPONIBLES:\n"
+                f"{context_str if context_str else '[NO SE DISPONE DE FUENTES ESPECÍFICAS PARA ESTA CONSULTA]'}\n\n"
+                "ESTRUCTURA OBLIGATORIA DEL DICTAMEN JURÍDICO:\n"
+                "1. ### Veredicto Jurídico Directo\n"
+                "2. ### Fundamento Normativo Aplicable (Cita solo las normas estrictamente aplicables)\n"
+                "3. ### Análisis y Subsunción Jurídica\n"
+                "4. ### Ruta Procesal Paso a Paso (Reclamación previa, Denuncia SIC)\n"
+                "5. ### Acciones Judiciales (Tutela, Demanda Civil)\n"
+                "6. ### Conclusión y Recomendaciones Prácticas Finales\n\n"
+                "REGLAS:\n"
+                "- Rigor y prudencia jurídica en derecho colombiano.\n"
+                "- Cierra todas las ideas con punto final."
+            )
+
+            engine = GeminiEngine(api_key=api_key, model=settings.GEMINI_MODEL)
+
+            async for token in engine.stream(
+                prompt=gemini_prompt,
+                system_prompt=orchestrator.system_prompt,
+                temperature=0.1,
+                max_tokens=2500
+            ):
+                if ttft is None:
+                    ttft = round(time.time() - start_time, 2)
+                    yield f"data: {json.dumps({'type': 'ttft', 'ttft': ttft}, ensure_ascii=False)}\n\n"
+
+                token_count += 1
+                full_text += token
+                out_token = PIIAnonymizer.unmask(token, mapping) if request.anonymize and mapping else token
+                yield f"data: {json.dumps({'type': 'token', 'text': out_token}, ensure_ascii=False)}\n\n"
+
+            total_time = round(time.time() - start_time, 2)
+            tok_s = round(token_count / total_time, 1) if total_time > 0 else 0
+
+            # Grounding check
+            is_grounded, grounding_msg, citations = GroundingValidator.validate(full_text, retrieved_docs)
+
+            yield f"data: {json.dumps({
+                'type': 'done',
+                'total_time': total_time,
+                'ttft': ttft or total_time,
+                'tokens': token_count,
+                'tokens_per_sec': tok_s,
+                'grounded': is_grounded,
+                'grounding_status': grounding_msg,
+                'citations': citations
+            }, ensure_ascii=False)}\n\n"
+
+        except Exception as e:
+            err_data = json.dumps({"type": "error", "message": f"Error en Google Gemini Cloud: {str(e)}"}, ensure_ascii=False)
+            yield f"data: {err_data}\n\n"
+
+    return StreamingResponse(
+        sse_gemini_stream(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

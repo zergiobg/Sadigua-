@@ -67,15 +67,41 @@ document.addEventListener("DOMContentLoaded", () => {
             const providerSelect = document.getElementById("cfg-provider");
             if (providerSelect) {
                 providerSelect.value = data.provider;
-                toggleProviderFields(data.provider);
             }
-            if (data.gemini_model) document.getElementById("cfg-gemini-model").value = data.gemini_model;
-            if (data.local_url) document.getElementById("cfg-local-url").value = data.local_url;
+            if (data.gemini_model) {
+                const gm = document.getElementById("cfg-gemini-model");
+                if (gm) gm.value = data.gemini_model;
+            }
+            if (data.local_url) {
+                const lu = document.getElementById("cfg-local-url");
+                if (lu) lu.value = data.local_url;
+            }
             if (data.local_model) {
                 const cfgLocal = document.getElementById("cfg-local-model");
                 if (cfgLocal) cfgLocal.value = data.local_model;
                 const quickSelect = document.getElementById("quick-model-select");
                 if (quickSelect) quickSelect.value = data.local_model;
+            }
+
+            // Actualizar estado del badge de Gemini en MLOps
+            const geminiBadge = document.getElementById("gemini-status-badge");
+            const geminiKeyInput = document.getElementById("cfg-gemini-key");
+            if (geminiBadge) {
+                if (data.gemini_configured) {
+                    geminiBadge.className = "badge badge-green";
+                    geminiBadge.textContent = "✓ Clave de API Configurada en Sistema";
+                    if (data.gemini_masked_key && geminiKeyInput) {
+                        geminiKeyInput.placeholder = `Clave guardada: ${data.gemini_masked_key}`;
+                    }
+                } else {
+                    geminiBadge.className = "badge";
+                    geminiBadge.style.background = "#FEF3C7";
+                    geminiBadge.style.color = "#92400E";
+                    geminiBadge.textContent = "⚠️ Clave No Configurada";
+                    if (geminiKeyInput) {
+                        geminiKeyInput.placeholder = "Pega tu clave AIzaSy... aquí";
+                    }
+                }
             }
 
         } catch (e) {
@@ -113,25 +139,30 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function toggleProviderFields(provider) {
-        const geminiFields = document.getElementById("cfg-gemini-fields");
-        const localFields = document.getElementById("cfg-local-fields");
-        if (provider === "gemini") {
-            geminiFields.style.display = "block";
-            localFields.style.display = "none";
-        } else {
-            geminiFields.style.display = "none";
-            localFields.style.display = "block";
-        }
-    }
-
-    document.getElementById("cfg-provider")?.addEventListener("change", (e) => {
-        toggleProviderFields(e.target.value);
-    });
-
     // -------------------------------------------------------------
     // 2. CHAT JURÍDICO INTERACTIVO & TELEMETRÍA EN VIVO (ONDAS)
     // -------------------------------------------------------------
+    let isComparisonMode = false;
+    const btnToggleComparison = document.getElementById("btn-toggle-comparison");
+    const compareToggleLabel = document.getElementById("compare-toggle-label");
+    const comparisonActiveBanner = document.getElementById("comparison-active-banner");
+    const chatContainer = document.querySelector(".chat-container");
+
+    btnToggleComparison?.addEventListener("click", () => {
+        isComparisonMode = !isComparisonMode;
+        if (isComparisonMode) {
+            btnToggleComparison.classList.add("active");
+            if (compareToggleLabel) compareToggleLabel.textContent = "⚖️ Modo Comparativo: ACTIVO";
+            if (comparisonActiveBanner) comparisonActiveBanner.classList.remove("hidden");
+            if (chatContainer) chatContainer.classList.add("comparison-wide");
+        } else {
+            btnToggleComparison.classList.remove("active");
+            if (compareToggleLabel) compareToggleLabel.textContent = "⚖️ Modo Comparativo: Inactivo";
+            if (comparisonActiveBanner) comparisonActiveBanner.classList.add("hidden");
+            if (chatContainer) chatContainer.classList.remove("comparison-wide");
+        }
+    });
+
     const chatMessages = document.getElementById("chat-messages");
     const chatInput = document.getElementById("chat-input");
     const btnSend = document.getElementById("btn-send");
@@ -184,6 +215,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function sendQuery(queryText) {
         if (!queryText || state.isQuerying) return;
+        if (isComparisonMode) {
+            return sendComparisonQuery(queryText);
+        }
         state.isQuerying = true;
         btnSend.disabled = true;
 
@@ -362,6 +396,367 @@ document.addEventListener("DOMContentLoaded", () => {
             btnSend.disabled = false;
             chatInput.focus();
         }
+    }
+
+    // -------------------------------------------------------------
+    // 2.1. MODO COMPARATIVO PARALELO (ARENA PEDAGÓGICA: LOCAL VS GEMINI)
+    // -------------------------------------------------------------
+    async function sendComparisonQuery(queryText) {
+        state.isQuerying = true;
+        btnSend.disabled = true;
+        chatInput.value = "";
+
+        appendUserMessage(queryText);
+
+        const arenaId = Date.now();
+        const currentLocalModel = document.getElementById("quick-model-select")?.value || "qwen2.5:7b-instruct";
+        const currentGeminiModel = document.getElementById("cfg-gemini-model")?.value || "gemini-2.5-flash";
+
+        const arenaWrapper = document.createElement("div");
+        arenaWrapper.className = "comparison-arena";
+        arenaWrapper.id = `arena-${arenaId}`;
+        arenaWrapper.innerHTML = `
+            <!-- Columna Izquierda: Modelo Local Soberano -->
+            <div class="arena-col local">
+                <div class="arena-header">
+                    <div class="arena-title-row">
+                        <div class="arena-title">
+                            <div class="arena-avatar local">S</div>
+                            <div>
+                                <strong style="color: var(--primary-blue); font-size: 14px;">Modelo Local Soberano</strong>
+                                <div class="arena-model-name">${escapeHtml(currentLocalModel)} (100% Offline)</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="arena-badges">
+                        <span class="badge badge-green">🔒 Soberanía 100% (Ley 1581)</span>
+                        <span class="badge badge-blue">💰 Costo: $0.00</span>
+                        <span class="arena-metric-pill timer" id="local-timer-${arenaId}">⏱️ 00:00.0s</span>
+                        <span class="arena-metric-pill speed" id="local-speed-${arenaId}">⚡ -- tok/s</span>
+                    </div>
+                </div>
+                <div class="arena-body" id="local-body-${arenaId}">
+                    <div class="arena-loading"><span class="hud-spinner"></span> <span>Iniciando inferencia local en CPU...</span></div>
+                </div>
+                <div class="arena-footer" id="local-footer-${arenaId}">
+                    <span id="local-status-${arenaId}" style="color: var(--text-secondary);">⏳ Procesando consulta...</span>
+                    <span id="local-tokens-${arenaId}" style="font-family: monospace; font-size: 11px;">0 tokens</span>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Google Gemini Cloud -->
+            <div class="arena-col gemini">
+                <div class="arena-header">
+                    <div class="arena-title-row">
+                        <div class="arena-title">
+                            <div class="arena-avatar gemini">G</div>
+                            <div>
+                                <strong style="color: #6D28D9; font-size: 14px;">Google Gemini Cloud</strong>
+                                <div class="arena-model-name">${escapeHtml(currentGeminiModel)} (Cloud API)</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="arena-badges">
+                        <span class="badge" style="background: #FEF3C7; color: #92400E;">☁️ Nube Pública</span>
+                        <span class="badge" style="background: #FEE2E2; color: #991B1B;">💳 Costo Cloud API</span>
+                        <span class="arena-metric-pill timer" id="gemini-timer-${arenaId}">⏱️ 00:00.0s</span>
+                        <span class="arena-metric-pill speed" id="gemini-speed-${arenaId}">⚡ -- tok/s</span>
+                    </div>
+                </div>
+                <div class="arena-body" id="gemini-body-${arenaId}">
+                    <div class="arena-loading"><span class="hud-spinner"></span> <span>Conectando con Google Gemini en la nube...</span></div>
+                </div>
+                <div class="arena-footer" id="gemini-footer-${arenaId}">
+                    <span id="gemini-status-${arenaId}" style="color: var(--text-secondary);">⏳ Esperando primeros tokens...</span>
+                    <span id="gemini-tokens-${arenaId}" style="font-family: monospace; font-size: 11px;">0 tokens</span>
+                </div>
+            </div>
+        `;
+
+        chatMessages.appendChild(arenaWrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Disparar ambos streams en paralelo
+        const localPromise = runLocalStream(queryText, arenaId);
+        const geminiPromise = runGeminiStream(queryText, arenaId);
+
+        const [localRes, geminiRes] = await Promise.allSettled([localPromise, geminiPromise]);
+
+        const localData = localRes.status === "fulfilled" ? localRes.value : { error: true, time: 0, tokens: 0, speed: 0 };
+        const geminiData = geminiRes.status === "fulfilled" ? geminiRes.value : { error: true, time: 0, tokens: 0, speed: 0 };
+
+        // Renderizar Tarjeta de Evaluación Comparativa
+        renderComparisonSummary(arenaWrapper, arenaId, localData, geminiData);
+
+        state.isQuerying = false;
+        btnSend.disabled = false;
+        chatInput.focus();
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function runLocalStream(queryText, arenaId) {
+        const timerEl = document.getElementById(`local-timer-${arenaId}`);
+        const speedEl = document.getElementById(`local-speed-${arenaId}`);
+        const bodyEl = document.getElementById(`local-body-${arenaId}`);
+        const statusEl = document.getElementById(`local-status-${arenaId}`);
+        const tokensEl = document.getElementById(`local-tokens-${arenaId}`);
+
+        const startTime = Date.now();
+        let tokenCount = 0;
+        let accumulatedText = "";
+        let isWave2Started = false;
+
+        const interval = setInterval(() => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const min = Math.floor(elapsed / 60);
+            const sec = (elapsed % 60).toFixed(1);
+            if (timerEl) timerEl.textContent = `⏱️ ${String(min).padStart(2, "0")}:${sec.padStart(4, "0")}s`;
+        }, 100);
+
+        try {
+            const res = await fetch("/api/chat/progressive", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: queryText,
+                    anonymize: chkAnonymize ? chkAnonymize.checked : true
+                })
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || "Error en el servidor local");
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n\n");
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+                    const jsonStr = trimmed.slice(5).trim();
+                    if (!jsonStr) continue;
+
+                    try {
+                        const event = JSON.parse(jsonStr);
+                        if (event.type === "phase") {
+                            if (statusEl) statusEl.textContent = event.message;
+                        } else if (event.type === "token") {
+                            if (event.wave === 2 && !isWave2Started) {
+                                isWave2Started = true;
+                                accumulatedText += "\n\n---\n\n### Ruta Procesal, Tutela y Acciones Concretas\n\n";
+                            }
+                            tokenCount++;
+                            accumulatedText += event.text;
+                            if (bodyEl) {
+                                bodyEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
+                            }
+                            const elapsedSec = (Date.now() - startTime) / 1000;
+                            if (speedEl && elapsedSec > 0) {
+                                speedEl.textContent = `⚡ ${(tokenCount / elapsedSec).toFixed(1)} tok/s`;
+                            }
+                            if (tokensEl) tokensEl.textContent = `${tokenCount} tokens`;
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        } else if (event.type === "precedent_hit") {
+                            accumulatedText = event.answer;
+                            if (bodyEl) {
+                                bodyEl.innerHTML = `<div class="badge badge-green" style="margin-bottom: 8px;">⚡ Precedente en Bóveda (${(event.similarity*100).toFixed(0)}%)</div><br>` + formatResponseText(accumulatedText);
+                            }
+                        } else if (event.type === "done") {
+                            // Listo
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            clearInterval(interval);
+            const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            if (bodyEl) {
+                bodyEl.innerHTML = formatResponseText(accumulatedText);
+            }
+            const tokSec = totalElapsed > 0 ? (tokenCount / totalElapsed).toFixed(1) : 0;
+            if (statusEl) statusEl.textContent = `✓ Concluido en ${totalElapsed}s | 100% Soberano`;
+            return { time: parseFloat(totalElapsed), tokens: tokenCount, speed: parseFloat(tokSec) };
+
+        } catch (err) {
+            clearInterval(interval);
+            if (bodyEl) {
+                bodyEl.innerHTML = `<div style="color: #DC2626; padding: 12px; background: #FEF2F2; border-radius: 6px;"><strong>Error Local:</strong> ${escapeHtml(err.message)}</div>`;
+            }
+            if (statusEl) statusEl.textContent = "❌ Error en inferencia local";
+            return { error: true, message: err.message };
+        }
+    }
+
+    async function runGeminiStream(queryText, arenaId) {
+        const timerEl = document.getElementById(`gemini-timer-${arenaId}`);
+        const speedEl = document.getElementById(`gemini-speed-${arenaId}`);
+        const bodyEl = document.getElementById(`gemini-body-${arenaId}`);
+        const statusEl = document.getElementById(`gemini-status-${arenaId}`);
+        const tokensEl = document.getElementById(`gemini-tokens-${arenaId}`);
+
+        const startTime = Date.now();
+        let tokenCount = 0;
+        let accumulatedText = "";
+
+        const interval = setInterval(() => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const min = Math.floor(elapsed / 60);
+            const sec = (elapsed % 60).toFixed(1);
+            if (timerEl) timerEl.textContent = `⏱️ ${String(min).padStart(2, "0")}:${sec.padStart(4, "0")}s`;
+        }, 100);
+
+        try {
+            const res = await fetch("/api/chat/gemini-stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: queryText,
+                    anonymize: chkAnonymize ? chkAnonymize.checked : true
+                })
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || "Error en el servidor");
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n\n");
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+                    const jsonStr = trimmed.slice(5).trim();
+                    if (!jsonStr) continue;
+
+                    try {
+                        const event = JSON.parse(jsonStr);
+                        if (event.type === "phase") {
+                            if (statusEl) statusEl.textContent = event.message;
+                        } else if (event.type === "token") {
+                            tokenCount++;
+                            accumulatedText += event.text;
+                            if (bodyEl) {
+                                bodyEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
+                            }
+                            const elapsedSec = (Date.now() - startTime) / 1000;
+                            if (speedEl && elapsedSec > 0) {
+                                speedEl.textContent = `⚡ ${(tokenCount / elapsedSec).toFixed(1)} tok/s`;
+                            }
+                            if (tokensEl) tokensEl.textContent = `${tokenCount} tokens`;
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        } else if (event.type === "error") {
+                            clearInterval(interval);
+                            if (bodyEl) {
+                                bodyEl.innerHTML = `
+                                    <div style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 14px; color: #991B1B;">
+                                        <strong>⚠️ Configuración de Gemini Requerida:</strong>
+                                        <p style="margin: 6px 0 10px 0; font-size: 13px;">${escapeHtml(event.message)}</p>
+                                        <button type="button" class="btn-primary" style="font-size: 12px; padding: 5px 12px;" onclick="document.querySelector('[data-tab=tab-settings]').click();">
+                                            ⚙️ Ir a Configuración MLOps para cargar API Key
+                                        </button>
+                                    </div>
+                                `;
+                            }
+                            if (statusEl) statusEl.textContent = "⚠️ Clave no configurada o error de red";
+                            return { error: true, message: event.message };
+                        } else if (event.type === "done") {
+                            // Listo
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            clearInterval(interval);
+            const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            if (bodyEl) {
+                bodyEl.innerHTML = formatResponseText(accumulatedText);
+            }
+            const tokSec = totalElapsed > 0 ? (tokenCount / totalElapsed).toFixed(1) : 0;
+            if (statusEl) statusEl.textContent = `✓ Concluido en ${totalElapsed}s | Cloud Híbrido`;
+            return { time: parseFloat(totalElapsed), tokens: tokenCount, speed: parseFloat(tokSec) };
+
+        } catch (err) {
+            clearInterval(interval);
+            if (bodyEl) {
+                bodyEl.innerHTML = `<div style="color: #DC2626; padding: 12px; background: #FEF2F2; border-radius: 6px;"><strong>Error Gemini Cloud:</strong> ${escapeHtml(err.message)}</div>`;
+            }
+            if (statusEl) statusEl.textContent = "❌ Error en conexión Cloud";
+            return { error: true, message: err.message };
+        }
+    }
+
+    function renderComparisonSummary(arenaWrapper, arenaId, localData, geminiData) {
+        const summaryCard = document.createElement("div");
+        summaryCard.className = "comparison-summary-card";
+        summaryCard.id = `summary-${arenaId}`;
+
+        const localTimeStr = localData.error ? "Error" : `${localData.time}s (${localData.speed} tok/s)`;
+        const geminiTimeStr = geminiData.error ? "No ejecutado / Sin API Key" : `${geminiData.time}s (${geminiData.speed} tok/s)`;
+
+        summaryCard.innerHTML = `
+            <h4>⚖️ Veredicto Comparativo Pedagógico</h4>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Criterio Evaluado</th>
+                        <th style="width: 32%;">🏠 Modelo Local Soberano</th>
+                        <th style="width: 32%;">🌐 Google Gemini Cloud</th>
+                        <th style="width: 11%;">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Soberanía & Reserva Legal</strong></td>
+                        <td><span class="badge badge-green">🔒 100% On-Premise</span> (Cumple Ley 1581 & Conpes 4144)</td>
+                        <td><span class="badge" style="background: #FEF3C7; color: #92400E;">☁️ Nube Pública</span> (Transferencia fuera del host)</td>
+                        <td><strong>Local Gana</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Costo Operativo</strong></td>
+                        <td><strong>$0.00 COP</strong> (Inferencia ilimitada en hardware propio)</td>
+                        <td>Tarifa por millón de tokens en USD + Facturación mensual</td>
+                        <td><strong>Local Gana</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Rendimiento & Latencia</strong></td>
+                        <td>${localTimeStr} en CPU AVX2</td>
+                        <td>${geminiTimeStr} en Google Cloud TPU</td>
+                        <td><strong>${geminiData.error ? 'Local Activo' : 'Gemini +rápido'}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Garantía de Continuidad</strong></td>
+                        <td><span class="badge badge-green">✓ Opera sin Internet</span> (Air-Gapped)</td>
+                        <td><span class="badge" style="background: #FEF3C7; color: #92400E;">⚠️ Depende de Conectividad</span></td>
+                        <td><strong>Local Gana</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                💡 <strong>Conclusión para el Despliegue:</strong> La prueba demuestra que el modelo local ejecuta la fundamentación jurídica y la ruta procesal completa con cero fuga de información y costo cero. Puede usarse con total tranquilidad y solvencia operativa.
+            </p>
+        `;
+        arenaWrapper.insertAdjacentElement("afterend", summaryCard);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     function renderSources(container, sources) {
@@ -769,13 +1164,50 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // -------------------------------------------------------------
-    // 5. GUARDAR AJUSTES MLOPS
+    // 5. GUARDAR AJUSTES MLOPS & CREDENCIALES GEMINI
     // -------------------------------------------------------------
+    document.getElementById("btn-save-gemini-key")?.addEventListener("click", async () => {
+        const geminiKey = document.getElementById("cfg-gemini-key").value.trim();
+        const geminiModel = document.getElementById("cfg-gemini-model")?.value?.trim() || "gemini-2.5-flash";
+
+        if (!geminiKey) {
+            alert("Por favor ingresa tu API Key de Gemini antes de guardar.");
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/system/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    gemini_api_key: geminiKey,
+                    gemini_model: geminiModel
+                })
+            });
+            if (res.ok) {
+                alert("✓ Clave de Gemini guardada con éxito en el sistema local (.env). Modo comparativo habilitado.");
+                document.getElementById("cfg-gemini-key").value = "";
+                await loadSystemStatus();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert("Error al guardar: " + (err.detail || "Error desconocido"));
+            }
+        } catch (e) {
+            alert("Error de conexión: " + e.message);
+        }
+    });
+
+    document.getElementById("btn-toggle-gemini-key")?.addEventListener("click", () => {
+        const input = document.getElementById("cfg-gemini-key");
+        if (!input) return;
+        input.type = input.type === "password" ? "text" : "password";
+    });
+
     document.getElementById("btn-save-config")?.addEventListener("click", async () => {
         const provider = document.getElementById("cfg-provider").value;
         const cloudEgress = document.getElementById("chk-cloud-egress") ? document.getElementById("chk-cloud-egress").checked : false;
-        const geminiKey = document.getElementById("cfg-gemini-key").value.trim();
-        const geminiModel = document.getElementById("cfg-gemini-model").value.trim();
+        const geminiKey = document.getElementById("cfg-gemini-key")?.value?.trim() || "";
+        const geminiModel = document.getElementById("cfg-gemini-model")?.value?.trim() || "gemini-2.5-flash";
         const localUrl = document.getElementById("cfg-local-url").value.trim();
         const localModel = document.getElementById("cfg-local-model").value.trim();
 
