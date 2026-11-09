@@ -8,7 +8,10 @@ SPANISH_STOPWORDS = {
     "estos", "estas", "esos", "esas", "aquel", "aquella", "tiene", "tienen",
     "puede", "pueden", "debe", "deben", "hacer", "hace", "ante", "bajo", "contra",
     "hacia", "mediante", "durante", "todo", "toda", "todos", "todas", "otro",
-    "otra", "otros", "otras", "mismo", "misma", "caso", "casos", "forma", "manera"
+    "otra", "otros", "otras", "mismo", "misma", "caso", "casos", "forma", "manera",
+    "articulo", "artículo", "art", "arts", "constitucion", "constitución", "cosntitucion",
+    "cosntitución", "colombia", "colombiana", "habla", "dice", "trata", "menciona",
+    "refiere", "establece", "dispone", "consagra"
 }
 
 class PrecisionReranker:
@@ -39,7 +42,13 @@ class PrecisionReranker:
             
             # Bonificación por coincidencia exacta de artículos y palabras clave sustantivas
             keyword_matches = sum(1 for w in query_words if w in content)
-            final_score = rrf_score * (1.0 + 0.5 * keyword_matches)
+            has_article_label = bool(doc.get("articulo"))
+            
+            # Factor de bonificación: cada palabra sustantiva multiplica el score
+            multiplier = 1.0 + (3.0 * keyword_matches)
+            if has_article_label and keyword_matches > 0:
+                multiplier *= 1.5
+            final_score = rrf_score * multiplier
 
             doc_with_score = dict(doc)
             doc_with_score["rerank_score"] = final_score

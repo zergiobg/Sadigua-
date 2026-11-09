@@ -37,6 +37,12 @@ class LocalVectorStore:
         }
         self.storage_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    def clear(self):
+        """Limpia la base vectorial para evitar duplicados en re-indexaciones."""
+        self.documents = []
+        self.embeddings = []
+        self._save()
+
     async def add_documents(self, docs: List[Dict[str, Any]]):
         if not docs:
             return
@@ -63,9 +69,15 @@ class LocalVectorStore:
         query_vec = query_embeds[0]
 
         scores = []
+        seen_ids = set()
         for idx, doc_vec in enumerate(self.embeddings):
+            doc = self.documents[idx]
+            doc_id = doc.get("id", str(hash(doc.get("content", ""))))
+            if doc_id in seen_ids:
+                continue
+            seen_ids.add(doc_id)
             sim = self._cosine_similarity(query_vec, doc_vec)
-            scores.append((self.documents[idx], sim))
+            scores.append((doc, sim))
 
         # Ordenar por similitud descendente
         scores.sort(key=lambda x: x[1], reverse=True)

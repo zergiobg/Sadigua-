@@ -98,7 +98,7 @@ class SadiguaOrchestrator:
                 )
                 await pipeline.ingest_corpus()
 
-            candidates = await self.retriever.retrieve(user_query, top_k=6)
+            candidates = await self.retriever.retrieve(user_query, top_k=15)
             retrieved_docs = self.reranker.rerank(user_query, candidates, top_n=3)
 
         # 3. Construcción del Prompt Enriquecido con Evidencias
@@ -260,7 +260,7 @@ class SadiguaOrchestrator:
                 "progress": 34
             }
 
-            candidates = await self.retriever.retrieve(user_query, top_k=6)
+            candidates = await self.retriever.retrieve(user_query, top_k=15)
             yield {
                 "type": "phase",
                 "phase": "rerank",
@@ -332,12 +332,12 @@ class SadiguaOrchestrator:
                 prompt=prompt_wave_1,
                 system_prompt=system_p1,
                 temperature=0.1,
-                max_tokens=1500  # Presupuesto amplio para evitar truncamientos
+                max_tokens=750  # Optimizado para rapidez de respuesta
             ):
                 wave_1_text += token
                 yield {"type": "token", "wave": 1, "text": token}
         except Exception as e:
-            wave_1_text = await self.llm.generate(prompt=prompt_wave_1, system_prompt=system_p1, max_tokens=1500)
+            wave_1_text = await self.llm.generate(prompt=prompt_wave_1, system_prompt=system_p1, max_tokens=750)
             yield {"type": "token", "wave": 1, "text": wave_1_text}
 
         # Guardián Anti-Truncamiento: Onda 1
@@ -392,17 +392,16 @@ class SadiguaOrchestrator:
             f"CONSULTA ORIGINAL:\n{user_query}\n\n"
             f"DICTAMEN JURÍDICO Y FUNDAMENTOS YA EMITIDOS EN ONDA 1:\n{wave_1_text}\n\n"
             f"FUENTES NORMATIVAS:\n{context_str}\n\n"
-            "ESTRUCTURA OBLIGATORIA PARA LA ONDA 2 (RUTA PROCESAL Y ESTRATEGIA DE LITIGIO):\n"
-            "1. ### Ruta Procesal Paso a Paso para el Afectado\n"
-            "   (Paso 1: Reclamación directa formal previa ante el responsable. Paso 2: Queja/Denuncia formal administrativa ante la Superintendencia de Industria y Comercio - SIC).\n"
-            "2. ### Acciones Judiciales y Constitucionales\n"
-            "   (Procedencia de la Acción de Tutela por vulneración del derecho fundamental al Hábeas Data / Intimidad, y Demanda de Responsabilidad Civil por perjuicios ante la jurisdicción ordinaria civil).\n"
-            "3. ### Conclusión y Recomendaciones Prácticas Finales\n"
-            "   (Preservación de cadena de custodia y evidencias digitales, medidas cautelares y advertencias legales definitivas de cierre).\n\n"
+            "ESTRUCTURA PARA LA ONDA 2 (DESARROLLO PRÁCTICO Y CONTEXTO NORMATIVO):\n"
+            "1. ### Procedimiento y Acciones Concretas\n"
+            "   (Si la consulta plantea una vulneración o caso de litigio, describe las acciones y recursos judiciales procedentes como Tutela o demandas. Si la consulta es una pregunta de conocimiento o precisión normativa sobre un artículo, explica el alcance jurídico, excepciones y concordancias normativas relevantes).\n"
+            "2. ### Conclusión y Recomendaciones Prácticas Finales\n"
+            "   (Cierre contundente con consejos prácticos para el consultante, advertencias legales y recomendaciones preventivas).\n\n"
             "REGLAS CRÍTICAS DE REDACCIÓN:\n"
-            "- Desarrolla cada recomendación procesal de manera sustantiva, útil y redactada en párrafos claros.\n"
-            "- Concluye todo el dictamen con un párrafo final de recomendaciones y advertencias cerrado con punto final.\n"
-            "- NUNCA hagas listas vacías de números ni dejes ideas inconclusas."
+            "- Desarrolla cada aspecto con precisión profesional y en párrafos claros.\n"
+            "- Adapta el análisis a la naturaleza de la pregunta (NO inventes litigios ni quejas ante la SIC si la pregunta es solo conceptual o de identificación de un artículo).\n"
+            "- Concluye todo el dictamen con un párrafo final cerrado con punto final.\n"
+            "- NO repitas el Veredicto ni los Fundamentos ya emitidos en la Onda 1."
         )
 
         wave_2_text = ""
@@ -411,12 +410,12 @@ class SadiguaOrchestrator:
                 prompt=prompt_wave_2,
                 system_prompt=self.system_prompt,
                 temperature=0.1,
-                max_tokens=2500  # Presupuesto amplio para evitar truncamientos
+                max_tokens=900  # Optimizado para evitar esperas excesivas en CPU
             ):
                 wave_2_text += token
                 yield {"type": "token", "wave": 2, "text": token}
         except Exception as e:
-            wave_2_text = await self.llm.generate(prompt=prompt_wave_2, system_prompt=self.system_prompt, max_tokens=2500)
+            wave_2_text = await self.llm.generate(prompt=prompt_wave_2, system_prompt=self.system_prompt, max_tokens=900)
             yield {"type": "token", "wave": 2, "text": wave_2_text}
 
         # Guardián Anti-Truncamiento: Onda 2

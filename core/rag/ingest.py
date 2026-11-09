@@ -73,7 +73,8 @@ class IngestionPipeline:
         if all_chunks:
             # 1. Indexar en BM25
             self.bm25_index.index(all_chunks)
-            # 2. Vectorizar y guardar en base vectorial
+            # 2. Limpiar base vectorial previa y re-vectorizar
+            self.vector_store.clear()
             await self.vector_store.add_documents(all_chunks)
             print(f"[OK] Ingesta completada con exito: {len(all_chunks)} fragmentos indexados.")
 

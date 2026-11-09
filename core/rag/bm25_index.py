@@ -2,6 +2,16 @@ import math
 import re
 from typing import List, Dict, Any, Tuple
 
+LEGAL_QUERY_STOPWORDS = {
+    "que", "qué", "de", "la", "el", "los", "las", "un", "una", "unos", "unas",
+    "y", "o", "a", "en", "para", "por", "si", "mi", "mis", "su", "sus", "sin",
+    "con", "se", "del", "al", "es", "son", "como", "sobre", "mas", "más", "pero",
+    "articulo", "artículo", "art", "arts", "ley", "norma", "normas", "codigo", "código",
+    "constitucion", "constitución", "cosntitucion", "cosntitución", "colombia", "colombiana",
+    "habla", "dice", "trata", "menciona", "refiere", "establece", "dispone", "consagra",
+    "cual", "cuál", "cuales", "cuáles", "donde", "dónde", "cuando", "cuándo"
+}
+
 class PureBM25Index:
     """
     Motor de Búsqueda Léxica BM25 (Okapi) de alta precisión.
@@ -56,9 +66,13 @@ class PureBM25Index:
         if not query_tokens:
             return []
 
+        # Filtrar stopwords para no contaminar la búsqueda con palabras ultra-comunes
+        substantive_tokens = [t for t in query_tokens if t not in LEGAL_QUERY_STOPWORDS]
+        tokens_to_search = substantive_tokens if substantive_tokens else query_tokens
+
         scores = [0.0] * self.N
 
-        for term in query_tokens:
+        for term in tokens_to_search:
             if term not in self.idf:
                 continue
             term_idf = self.idf[term]
