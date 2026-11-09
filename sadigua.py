@@ -145,8 +145,8 @@ def cmd_sync(commit_msg="Update Sadigua core and knowledge base"):
             "/NFL", "/NDL", "/NJH", "/NJS"
         ]
         res_robo = subprocess.run(cmd_robo, capture_output=True)
-        # En robocopy, 0 o 1 son códigos de éxito
-        if res_robo.returncode in [0, 1]:
+        # En robocopy, valores menores a 8 indican éxito (0: sin cambios, 1: archivos copiados, 2/3: extras/actualizados)
+        if res_robo.returncode < 8:
             print(f"[OK] Proyecto Sadigua sincronizado al 100% en Google Drive.")
             print(f"     Ubicación: G:\\My Drive\\AI_BOCHICA\\Sadigua")
         else:
