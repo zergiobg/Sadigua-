@@ -76,6 +76,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="Consulta del usuario")
     anonymize: bool = Field(default=True, description="Enmascarar datos personales (Ley 1581)")
     skip_cache: bool = Field(default=False, description="Omitir caché de precedentes y forzar búsqueda RAG fresca")
+    include_in_memory: bool = Field(default=True, description="Guardar en la Bóveda de Obsidian como precedente")
 
 class CheckIntentRequest(BaseModel):
     message: str
@@ -283,7 +284,11 @@ async def chat_progressive_endpoint(request: ChatRequest):
 
     async def sse_event_stream():
         try:
-            async for event in orchestrator.answer_progressive_stream(user_query, skip_cache=request.skip_cache):
+            async for event in orchestrator.answer_progressive_stream(
+                user_query,
+                skip_cache=request.skip_cache,
+                include_in_memory=request.include_in_memory
+            ):
                 # Si hubo enmascaramiento de PII, restaurar en los textos que se envíen
                 if request.anonymize and mapping:
                     if event.get("type") == "token" and "text" in event:
@@ -420,6 +425,12 @@ async def chat_gemini_stream_endpoint(request: ChatRequest):
         }
     )
 
+@app.post("/api/chat/stop")
+def stop_chat_generation():
+    """Detiene inmediatamente la generación de síntesis en curso en el LLM."""
+    orchestrator.request_stop()
+    return {"status": "stopped", "message": "Síntesis detenida exitosamente."}
+
 @app.get("/api/vault/consultas")
 def list_vault_consultas():
     """Retorna el catálogo de precedentes indexados en vault/consultas/"""
@@ -427,6 +438,12 @@ def list_vault_consultas():
         "total_consultas": len(orchestrator.semantic_cache.entries),
         "consultas": orchestrator.semantic_cache.entries
     }
+
+@app.delete("/api/vault/consultas/{note_id}")
+def delete_vault_consulta(note_id: str):
+    """Elimina una consulta/precedente de la Bóveda de Obsidian y del índice semántico."""
+    success = orchestrator.semantic_cache.delete_precedent(note_id)
+    return {"status": "deleted" if success else "not_found", "note_id": note_id}
 
 # -------------------------------------------------------------
 # ENDPOINTS DE CARTUCHOS & DOCUMENTOS

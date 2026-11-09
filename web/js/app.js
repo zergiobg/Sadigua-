@@ -13,7 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
         notes: [],
         cartridges: [],
         documents: [],
-        isQuerying: false
+        isQuerying: false,
+        includeInMemory: true
     };
 
     const getViz = () => window.sadiguaVisualizer || null;
@@ -47,6 +48,9 @@ document.addEventListener("DOMContentLoaded", () => {
     drawerBackdrop?.addEventListener("click", closeDrawer);
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
+            if (state.isQuerying && typeof abortCurrentQuery === "function") {
+                abortCurrentQuery();
+            }
             closeDrawer();
             document.getElementById("note-modal")?.classList.remove("active");
             if (typeof closeMutationModal === "function") closeMutationModal();
@@ -244,7 +248,63 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatMessages = document.getElementById("chat-messages");
     const chatInput = document.getElementById("chat-input");
     const btnSend = document.getElementById("btn-send");
+    const btnStop = document.getElementById("btn-stop");
+    const hudBtnStop = document.getElementById("hud-btn-stop");
     const chkAnonymize = document.getElementById("chk-anonymize");
+
+    // Control de Privacidad y Memoria Persistente (Bóveda Obsidian)
+    const btnToggleMemory = document.getElementById("btn-toggle-memory");
+    const memoryPillDot = document.getElementById("memory-pill-dot");
+    const memoryToggleIcon = document.getElementById("memory-toggle-icon");
+    const memoryToggleLabel = document.getElementById("memory-toggle-label");
+    const chatPrivacyHint = document.getElementById("chat-privacy-hint");
+    let currentAbortController = null;
+
+    function setUIGeneratingState(isGenerating) {
+        state.isQuerying = isGenerating;
+        if (btnStop) btnStop.style.display = isGenerating ? "inline-flex" : "none";
+        if (hudBtnStop) hudBtnStop.style.display = isGenerating ? "inline-flex" : "none";
+        if (btnSend) {
+            btnSend.style.display = isGenerating ? "none" : "inline-flex";
+            btnSend.disabled = isGenerating;
+        }
+        const pedLiveSpinner = document.getElementById("ped-live-spinner");
+        if (pedLiveSpinner) {
+            pedLiveSpinner.style.display = isGenerating ? "inline-block" : "none";
+        }
+    }
+
+    async function abortCurrentQuery() {
+        if (!state.isQuerying) return;
+        if (currentAbortController) {
+            currentAbortController.abort();
+            currentAbortController = null;
+        }
+        try {
+            fetch("/api/chat/stop", { method: "POST" });
+        } catch (_) {}
+        setUIGeneratingState(false);
+    }
+
+    btnStop?.addEventListener("click", abortCurrentQuery);
+    hudBtnStop?.addEventListener("click", abortCurrentQuery);
+
+    btnToggleMemory?.addEventListener("click", () => {
+        state.includeInMemory = !state.includeInMemory;
+        if (state.includeInMemory) {
+            btnToggleMemory.className = "toggle-control-pill active-save";
+            if (memoryPillDot) memoryPillDot.className = "pill-dot mint";
+            if (memoryToggleIcon) memoryToggleIcon.textContent = "🧠";
+            if (memoryToggleLabel) memoryToggleLabel.textContent = "Memoria Activa (Guardar en Bóveda)";
+            if (chatPrivacyHint) chatPrivacyHint.textContent = "El dictamen se archivará como precedente en Obsidian";
+        } else {
+            btnToggleMemory.className = "toggle-control-pill active-ephemeral";
+            if (memoryPillDot) memoryPillDot.className = "pill-dot amber";
+            if (memoryToggleIcon) memoryToggleIcon.textContent = "🛡️";
+            if (memoryToggleLabel) memoryToggleLabel.textContent = "No incluir en memoria (Efímero)";
+            if (chatPrivacyHint) chatPrivacyHint.textContent = "🔒 Modo privado: Este dictamen NO se guardará en la Bóveda de Obsidian";
+        }
+    });
 
     // Elementos del HUD de Telemetría
     const chatHud = document.getElementById("chat-hud");
@@ -493,7 +553,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function executeStreamingQuery(queryText, skipCache = false) {
         state.isQuerying = true;
-        btnSend.disabled = true;
+        setUIGeneratingState(true);
+        currentAbortController = new AbortController();
         userScrolledMainChat = false;
 
         if (!skipCache) {
@@ -573,8 +634,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({
                     message: queryText,
                     anonymize: chkAnonymize ? chkAnonymize.checked : true,
-                    skip_cache: skipCache
-                })
+                    skip_cache: skipCache,
+                    include_in_memory: state.includeInMemory
+                }),
+                signal: currentAbortController.signal
             });
 
             if (!res.ok) {
@@ -664,6 +727,15 @@ document.addEventListener("DOMContentLoaded", () => {
                             accumulatedText += event.text;
                             latestWave = event.wave || 1;
                             receivedTokensInChunk = true;
+                        } else if (event.type === "stopped") {
+                            const cookingPill = document.getElementById("wave2-cooking-pill");
+                            if (cookingPill) cookingPill.remove();
+                            stopStopwatch();
+                            if (hudPhaseLabel) hudPhaseLabel.textContent = "⏹️ Síntesis detenida por el usuario.";
+                            if (hudProgressFill) hudProgressFill.style.backgroundColor = "#ef4444";
+                            accumulatedText += "\n\n> ⏹️ *[Síntesis detenida por el usuario]*";
+                            flushStreamRender(true);
+                            break;
                         } else if (event.type === "precedent_hit") {
                             const cookingPill = document.getElementById("wave2-cooking-pill");
                             if (cookingPill) cookingPill.remove();
@@ -687,24 +759,53 @@ document.addEventListener("DOMContentLoaded", () => {
                             getViz()?.completeSession({ cacheHit: true });
                         } else if (event.type === "grounding") {
                             getViz()?.activateLayer(7, { immediate: true });
-                            if (event.mutations_detected && event.mutations_detected.length) {
-                                renderMutationBannersInChat(bodyEl, event.mutations_detected);
-                            }
                             if (badgesEl) {
-                                badgesEl.innerHTML = event.grounded
+                                let badgesHtml = event.grounded
                                     ? `<span class="badge badge-green">✓ Grounding Verificado en Corpus</span>`
                                     : `<span class="badge" style="background: var(--warning-bg); color: var(--warning-text);">⚠️ ${escapeHtml(event.grounding_status)}</span>`;
+                                if (!event.in_memory) {
+                                    badgesHtml += ` <span class="badge" style="background: rgba(250, 204, 21, 0.18); color: #FDE047; font-weight: 600;">🛡️ No Guardado en Memoria (Efímero)</span>`;
+                                }
+                                badgesEl.innerHTML = badgesHtml;
                             }
                             if (event.mutations_detected && event.mutations_detected.length) {
                                 renderMutationBannersInChat(contentEl, event.mutations_detected);
                             }
                             renderSources(sourcesEl, event.sources);
+
+                            // Si se guardó en memoria y tiene note_id, permitir eliminarlo con el botón "Quitar de memoria"
+                            if (sourcesEl && event.note_id && event.in_memory !== false) {
+                                const forgetBtn = document.createElement("button");
+                                forgetBtn.type = "button";
+                                forgetBtn.className = "btn-msg-forget";
+                                forgetBtn.innerHTML = `<span>🗑️ Quitar de memoria</span>`;
+                                forgetBtn.title = "Eliminar este dictamen de la Bóveda de Obsidian";
+                                forgetBtn.addEventListener("click", async () => {
+                                    if (!confirm("¿Deseas quitar este dictamen de la Bóveda de Precedentes de Obsidian?")) return;
+                                    try {
+                                        const delRes = await fetch(`/api/vault/consultas/${event.note_id}`, { method: "DELETE" });
+                                        if (delRes.ok) {
+                                            forgetBtn.remove();
+                                            if (badgesEl) {
+                                                badgesEl.innerHTML += ` <span class="badge" style="background: rgba(248, 113, 113, 0.2); color: #fca5a5;">🗑️ Removido de la Bóveda</span>`;
+                                            }
+                                        }
+                                    } catch (err) {
+                                        alert("Error eliminando de la bóveda: " + err.message);
+                                    }
+                                });
+                                sourcesEl.appendChild(forgetBtn);
+                            }
                         } else if (event.type === "done") {
                             const cookingPill = document.getElementById("wave2-cooking-pill");
                             if (cookingPill) cookingPill.remove();
                             const totalDuration = stopStopwatch();
                             if (hudProgressFill) hudProgressFill.style.width = "100%";
-                            if (hudPhaseLabel) hudPhaseLabel.textContent = `✓ Respuesta completada y archivada en Bóveda (${totalDuration}s)`;
+                            if (hudPhaseLabel) {
+                                hudPhaseLabel.textContent = event.in_memory === false
+                                    ? `✓ Respuesta completada en modo privado (${totalDuration}s — No guardada en Bóveda)`
+                                    : `✓ Respuesta completada y archivada en Bóveda (${totalDuration}s)`;
+                            }
                             flushStreamRender(true);
                             getViz()?.completeSession({ cacheHit: false });
                         } else if (event.type === "error") {
@@ -725,11 +826,21 @@ document.addEventListener("DOMContentLoaded", () => {
             if (rafRenderId !== null) cancelAnimationFrame(rafRenderId);
             stopStopwatch();
             getViz()?.handleError();
-            if (hudPhaseLabel) hudPhaseLabel.textContent = `❌ Error: ${e.message}`;
-            appendErrorMessage(e.message);
+            if (e.name === "AbortError" || (e.message && e.message.includes("aborted"))) {
+                const cookingPill = document.getElementById("wave2-cooking-pill");
+                if (cookingPill) cookingPill.remove();
+                if (hudPhaseLabel) hudPhaseLabel.textContent = "⏹️ Síntesis detenida por el usuario.";
+                if (hudProgressFill) hudProgressFill.style.backgroundColor = "#ef4444";
+                accumulatedText += "\n\n> ⏹️ *[Síntesis detenida por el usuario]*";
+                flushStreamRender(true);
+            } else {
+                if (hudPhaseLabel) hudPhaseLabel.textContent = `❌ Error: ${e.message}`;
+                appendErrorMessage(e.message);
+            }
         } finally {
             state.isQuerying = false;
-            btnSend.disabled = false;
+            currentAbortController = null;
+            setUIGeneratingState(false);
             chatInput.focus();
         }
     }
@@ -739,7 +850,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // -------------------------------------------------------------
     async function sendComparisonQuery(queryText) {
         state.isQuerying = true;
-        btnSend.disabled = true;
+        setUIGeneratingState(true);
+        currentAbortController = new AbortController();
         chatInput.value = "";
 
         appendUserMessage(queryText);
@@ -853,7 +965,8 @@ document.addEventListener("DOMContentLoaded", () => {
         renderComparisonSummary(arenaWrapper, arenaId, localData, geminiData);
 
         state.isQuerying = false;
-        btnSend.disabled = false;
+        currentAbortController = null;
+        setUIGeneratingState(false);
         chatInput.focus();
     }
 
@@ -958,8 +1071,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     message: queryText,
-                    anonymize: chkAnonymize ? chkAnonymize.checked : true
-                })
+                    anonymize: chkAnonymize ? chkAnonymize.checked : true,
+                    include_in_memory: state.includeInMemory
+                }),
+                signal: currentAbortController ? currentAbortController.signal : undefined
             });
 
             if (!res.ok) {
@@ -1071,6 +1186,13 @@ document.addEventListener("DOMContentLoaded", () => {
             clearInterval(interval);
             stopStopwatch();
             getViz()?.handleError();
+            if (err.name === "AbortError" || (err.message && err.message.includes("aborted"))) {
+                if (bodyEl) {
+                    bodyEl.innerHTML = formatResponseText(accumulatedText) + '<div style="color: var(--warning-text); margin-top: 8px;"><em>⏹️ Síntesis detenida por el usuario.</em></div>';
+                }
+                if (statusEl) statusEl.textContent = "⏹️ Detenido por el usuario";
+                return { error: false, time: 0, tokens: tokenCount, speed: 0, stopped: true };
+            }
             if (bodyEl) {
                 bodyEl.innerHTML = `<div style="color: var(--danger-text); padding: 12px; background: var(--danger-bg); border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 8px;"><strong>Error Local:</strong> ${escapeHtml(err.message)}</div>`;
             }
@@ -1123,7 +1245,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({
                     message: queryText,
                     anonymize: chkAnonymize ? chkAnonymize.checked : true
-                })
+                }),
+                signal: currentAbortController ? currentAbortController.signal : undefined
             });
 
             if (!res.ok) {
@@ -1202,6 +1325,13 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             if (rafGeminiId !== null) cancelAnimationFrame(rafGeminiId);
             clearInterval(interval);
+            if (err.name === "AbortError" || (err.message && err.message.includes("aborted"))) {
+                if (bodyEl) {
+                    bodyEl.innerHTML = formatResponseText(accumulatedText) + '<div style="color: var(--warning-text); margin-top: 8px;"><em>⏹️ Síntesis detenida por el usuario.</em></div>';
+                }
+                if (statusEl) statusEl.textContent = "⏹️ Detenido por el usuario";
+                return { error: false, time: 0, tokens: tokenCount, speed: 0, stopped: true };
+            }
             if (bodyEl) {
                 bodyEl.innerHTML = `<div style="color: var(--danger-text); padding: 12px; background: var(--danger-bg); border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 8px;"><strong>Error Gemini Cloud:</strong> ${escapeHtml(err.message)}</div>`;
             }

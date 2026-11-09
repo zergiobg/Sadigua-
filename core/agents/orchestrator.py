@@ -38,6 +38,11 @@ class SadiguaOrchestrator:
         self.semantic_cache = SemanticPrecedentCache(vault_manager=self.vault)
         self.mutation_engine = LexMutationEngine()
         self.system_prompt = self._load_system_prompt()
+        self.stop_requested = False
+
+    def request_stop(self):
+        """Activa la bandera de parada para interrumpir la generación de síntesis en curso."""
+        self.stop_requested = True
 
     def _find_mutations_for_context(self, user_query: str, retrieved_docs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Identifica si los documentos recuperados o la consulta tienen mutaciones normativas registradas en SQLite."""
@@ -92,7 +97,7 @@ class SadiguaOrchestrator:
             return True
         return False
 
-    async def answer(self, user_query: str) -> Dict[str, Any]:
+    async def answer(self, user_query: str, include_in_memory: bool = True) -> Dict[str, Any]:
         """
         Flujo de razonamiento síncrono completo con blindaje anti-truncamiento.
         """
@@ -210,13 +215,16 @@ class SadiguaOrchestrator:
             }
             for d in retrieved_docs
         ]
-        note_path = await self.semantic_cache.store_precedent(
-            query=user_query,
-            answer=raw_answer,
-            sources=sources_meta,
-            cartridge_name=self.cartridge_name,
-            grounding_status=grounding_msg
-        )
+        note_id = None
+        if include_in_memory:
+            note_path = await self.semantic_cache.store_precedent(
+                query=user_query,
+                answer=raw_answer,
+                sources=sources_meta,
+                cartridge_name=self.cartridge_name,
+                grounding_status=grounding_msg
+            )
+            note_id = note_path.stem
 
         return {
             "answer": raw_answer,
@@ -225,19 +233,21 @@ class SadiguaOrchestrator:
             "sources": sources_meta,
             "citations_found": citations,
             "precedent_hit": False,
-            "note_id": note_path.stem,
+            "note_id": note_id,
+            "in_memory": include_in_memory,
             "mutations_detected": mutations_detected
         }
 
-    async def answer_progressive_stream(self, user_query: str, skip_cache: bool = False) -> AsyncGenerator[Dict[str, Any], None]:
+    async def answer_progressive_stream(self, user_query: str, skip_cache: bool = False, include_in_memory: bool = True) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Generador Asíncrono de Respuestas Progresivas en Ondas con Blindaje Anti-Truncamiento.
         - Onda 1: Dictamen y Fundamento Inmediato (Tokens en streaming con límite generoso).
         - Auto-Continuation Guard en Onda 1 si la frase no termina en punto.
         - Onda 2: Ruta Procesal, Tutela, Reclamaciones y Recomendaciones Completas.
         - Auto-Continuation Guard en Onda 2 si la recomendación no concluye en punto.
-        - Grounding final y Archivo de Precedente en Bóveda.
+        - Grounding final y Archivo de Precedente en Bóveda (si include_in_memory=True).
         """
+        self.stop_requested = False
         # Fase 0: Escudo PII y Tokenización Sub-léxica
         approx_q_tokens = max(1, int(len(user_query.split()) * 1.35))
         yield {
@@ -401,14 +411,23 @@ class SadiguaOrchestrator:
                 temperature=0.1,
                 max_tokens=750  # Optimizado para rapidez de respuesta
             ):
+                if self.stop_requested:
+                    yield {"type": "stopped", "message": "Síntesis detenida por el usuario."}
+                    return
                 wave_1_text += token
                 yield {"type": "token", "wave": 1, "text": token}
         except Exception as e:
+            if self.stop_requested:
+                yield {"type": "stopped", "message": "Síntesis detenida por el usuario."}
+                return
             wave_1_text = await self.llm.generate(prompt=prompt_wave_1, system_prompt=system_p1, max_tokens=750)
             yield {"type": "token", "wave": 1, "text": wave_1_text}
 
         # Guardián Anti-Truncamiento: Onda 1
         if not self.is_thought_complete(wave_1_text):
+            if self.stop_requested:
+                yield {"type": "stopped", "message": "Síntesis detenida por el usuario."}
+                return
             yield {
                 "type": "phase",
                 "phase": "wave_1_continuation",
@@ -429,6 +448,9 @@ class SadiguaOrchestrator:
                     temperature=0.0,
                     max_tokens=300
                 ):
+                    if self.stop_requested:
+                        yield {"type": "stopped", "message": "Síntesis detenida por el usuario."}
+                        return
                     wave_1_text += token
                     yield {"type": "token", "wave": 1, "text": token}
             except Exception:
@@ -479,14 +501,23 @@ class SadiguaOrchestrator:
                 temperature=0.1,
                 max_tokens=900  # Optimizado para evitar esperas excesivas en CPU
             ):
+                if self.stop_requested:
+                    yield {"type": "stopped", "message": "Síntesis detenida por el usuario."}
+                    return
                 wave_2_text += token
                 yield {"type": "token", "wave": 2, "text": token}
         except Exception as e:
+            if self.stop_requested:
+                yield {"type": "stopped", "message": "Síntesis detenida por el usuario."}
+                return
             wave_2_text = await self.llm.generate(prompt=prompt_wave_2, system_prompt=self.system_prompt, max_tokens=900)
             yield {"type": "token", "wave": 2, "text": wave_2_text}
 
         # Guardián Anti-Truncamiento: Onda 2
         if not self.is_thought_complete(wave_2_text):
+            if self.stop_requested:
+                yield {"type": "stopped", "message": "Síntesis detenida por el usuario."}
+                return
             yield {
                 "type": "phase",
                 "phase": "wave_2_continuation",
@@ -507,6 +538,9 @@ class SadiguaOrchestrator:
                     temperature=0.0,
                     max_tokens=400
                 ):
+                    if self.stop_requested:
+                        yield {"type": "stopped", "message": "Síntesis detenida por el usuario."}
+                        return
                     wave_2_text += token
                     yield {"type": "token", "wave": 2, "text": token}
             except Exception:
@@ -538,13 +572,16 @@ class SadiguaOrchestrator:
             for d in retrieved_docs
         ]
 
-        note_path = await self.semantic_cache.store_precedent(
-            query=user_query,
-            answer=full_answer,
-            sources=sources_meta,
-            cartridge_name=self.cartridge_name,
-            grounding_status=grounding_msg
-        )
+        note_id = None
+        if include_in_memory:
+            note_path = await self.semantic_cache.store_precedent(
+                query=user_query,
+                answer=full_answer,
+                sources=sources_meta,
+                cartridge_name=self.cartridge_name,
+                grounding_status=grounding_msg
+            )
+            note_id = note_path.stem
 
         self.memory.add_user_message(user_query)
         self.memory.add_assistant_message(full_answer, citations=citations)
@@ -554,14 +591,16 @@ class SadiguaOrchestrator:
             "grounded": is_grounded,
             "grounding_status": grounding_msg,
             "citations": citations,
-            "note_id": note_path.stem,
+            "note_id": note_id,
             "sources": sources_meta,
             "mutations_detected": mutations_detected,
+            "in_memory": include_in_memory,
             "progress": 100
         }
 
         yield {
             "type": "done",
-            "note_id": note_path.stem,
+            "note_id": note_id,
+            "in_memory": include_in_memory,
             "mutations_detected": mutations_detected
         }

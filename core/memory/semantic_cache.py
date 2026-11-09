@@ -260,3 +260,29 @@ class SemanticPrecedentCache:
             self._save_index()
 
         return path
+
+    def delete_precedent(self, note_id: str) -> bool:
+        """
+        Elimina un precedente de la Bóveda de Obsidian y del índice semántico
+        en caso de que el usuario decida no incluirlo o removerlo.
+        """
+        deleted = False
+        safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', note_id) + ".md"
+        file_a = self.cache_dir / safe_name
+        file_b = self.cache_dir / (note_id + ".md")
+
+        for f in [file_a, file_b]:
+            if f.exists():
+                try:
+                    f.unlink()
+                    deleted = True
+                except Exception:
+                    pass
+
+        prev_count = len(self.entries)
+        self.entries = [e for e in self.entries if e.get("note_id") != note_id]
+        if len(self.entries) < prev_count:
+            self._save_index()
+            deleted = True
+
+        return deleted

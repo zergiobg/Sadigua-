@@ -367,6 +367,9 @@
                             <div class="ped-phase-line">
                                 <span class="hud-spinner" id="ped-live-spinner" style="display: none;"></span>
                                 <span id="hud-phase-label">Listo para procesar en hardware local.</span>
+                                <button type="button" id="hud-btn-stop" class="hud-stop-btn" style="display: none;" title="Detener la síntesis en curso">
+                                    <span>⏹️ Detener</span>
+                                </button>
                             </div>
                             <div class="hud-waves-indicator">
                                 <span id="hud-badge-cache" class="wave-pill cache-pill hidden">⚡ Precedente</span>
@@ -415,9 +418,29 @@
                         <span class="prompt-pill" data-query="¿Cuáles son los términos para resolver una acción de tutela según la Constitución?">📜 Acción de Tutela (Art. 86)</span>
                     </div>
 
+                    <!-- Barra de Controles y Privacidad de la Consulta -->
+                    <div class="chat-controls-bar">
+                        <div class="chat-controls-left">
+                            <button type="button" id="btn-toggle-memory" class="toggle-control-pill active-save" title="Haz clic para alternar: Guardar en la Bóveda de Obsidian o mantener como consulta 100% efímera">
+                                <span class="pill-dot mint" id="memory-pill-dot"></span>
+                                <span id="memory-toggle-icon">🧠</span>
+                                <span id="memory-toggle-label">Memoria Activa (Guardar en Bóveda)</span>
+                            </button>
+                        </div>
+                        <div class="chat-controls-right">
+                            <span class="chat-privacy-hint" id="chat-privacy-hint">El dictamen se archivará como precedente en Obsidian</span>
+                        </div>
+                    </div>
+
                     <!-- Barra de entrada bioluminiscente -->
                     <div class="chat-input-bar">
                         <textarea id="chat-input" rows="1" placeholder="Escribe tu consulta jurídica o describe los hechos del caso para activar el Cerebro Local..."></textarea>
+                        
+                        <button type="button" class="btn-stop" id="btn-stop" style="display: none;" title="Detener inmediatamente la síntesis en curso">
+                            <span class="stop-icon-pulse">⏹️</span>
+                            <span>Detener Síntesis</span>
+                        </button>
+
                         <button class="btn-send" id="btn-send">
                             <span>Procesar</span>
                             <span>⚡</span>

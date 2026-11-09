@@ -39,6 +39,11 @@ from tests.test_mutation_engine import (
     test_reranker_temporal_weighting,
     test_api_mutation_endpoints
 )
+from tests.test_stop_and_ephemeral_memory import (
+    test_stop_generation_orchestrator,
+    test_ephemeral_query_does_not_save_to_memory,
+    test_api_stop_and_delete_precedent_endpoints
+)
 
 def run_all():
     tests = [
@@ -67,6 +72,9 @@ def run_all():
         ("Mutación Obsidian: Sincronización Bóveda y Wiki-Links", test_obsidian_vault_sync_mutation),
         ("Reranker Temporal: Penalización Superada vs Boost Histórico", test_reranker_temporal_weighting),
         ("API REST: Endpoints de Mutación y Trazabilidad Dogmática", test_api_mutation_endpoints),
+        ("Guardián de Parada: Cancelación de Síntesis en Vuelo (Stop)", test_stop_generation_orchestrator),
+        ("Memoria Efímera: Consulta sin Guardar en Bóveda Obsidian", test_ephemeral_query_does_not_save_to_memory),
+        ("API REST: Endpoints Stop e Inclusión/Remoción de Bóveda", test_api_stop_and_delete_precedent_endpoints),
     ]
 
     passed = 0
