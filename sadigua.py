@@ -141,6 +141,7 @@ def cmd_sync(commit_msg="Update Sadigua core and knowledge base"):
             "robocopy", base_dir, str(gdrive_dest),
             "/E", "/XD", ".git", ".venv", "venv", "__pycache__", "data", ".ollama",
             "/XF", ".env", "*.gguf", "*.bin",
+            "/R:1", "/W:1",
             "/NFL", "/NDL", "/NJH", "/NJS"
         ]
         res_robo = subprocess.run(cmd_robo, capture_output=True)
