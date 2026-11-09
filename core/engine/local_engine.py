@@ -57,9 +57,8 @@ class LocalEngine(BaseLLMEngine):
             "options": {
                 "temperature": temperature,
                 "num_thread": self.num_threads,
-                "num_predict": max_tokens or 450,
-                "num_ctx": 4096,
-                "use_mlock": True
+                "num_predict": max_tokens or 1200,
+                "num_ctx": 4096
             }
         }
 
@@ -96,9 +95,8 @@ class LocalEngine(BaseLLMEngine):
             "options": {
                 "temperature": temperature,
                 "num_thread": self.num_threads,
-                "num_predict": max_tokens or 450,
-                "num_ctx": 4096,
-                "use_mlock": True
+                "num_predict": max_tokens or 1200,
+                "num_ctx": 4096
             }
         }
 

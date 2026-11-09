@@ -68,14 +68,24 @@
              ========================================================= -->
         <main class="content-view active" id="tab-chat">
             <div class="chat-container">
-                <div class="chat-banner">
-                    <label class="switch-label">
-                        <input type="checkbox" id="chk-anonymize" checked>
-                        <span>🛡️ Anonimización PII Activa (Enmascara Cédulas, Correos y Teléfonos)</span>
-                    </label>
-                    <span class="badge badge-green" id="chat-grounding-indicator">
-                        ✓ Anti-Alucinaciones Activo
-                    </span>
+                <div class="chat-banner" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <label class="switch-label">
+                            <input type="checkbox" id="chk-anonymize" checked>
+                            <span>🛡️ Anonimización PII (Ley 1581)</span>
+                        </label>
+                        <span class="badge badge-green" id="chat-grounding-indicator">
+                            ✓ Anti-Alucinaciones Activo
+                        </span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="quick-model-select" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Modelo Local:</label>
+                        <select id="quick-model-select" class="form-control" style="padding: 4px 10px; font-size: 12px; height: 32px; width: auto; font-weight: 600; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px;">
+                            <option value="qwen2.5:3b-instruct">⚡ Qwen 2.5 3B (Ultra-Rápido ~25 tok/s)</option>
+                            <option value="qwen2.5:7b-instruct" selected>⚖️ Qwen 2.5 7B (Equilibrado ~9 tok/s)</option>
+                            <option value="qwen2.5:14b-instruct">🏛️ Qwen 2.5 14B (Alta Elocuencia 32GB+)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="messages-area" id="chat-messages">
@@ -292,7 +302,11 @@
                         </div>
                         <div class="form-group">
                             <label>Modelo Local Cuantizado (GGUF):</label>
-                            <input type="text" id="cfg-local-model" class="form-control" value="qwen2.5:14b-instruct">
+                            <select id="cfg-local-model" class="form-control">
+                                <option value="qwen2.5:3b-instruct">⚡ Qwen 2.5 3B Instruct (Ultra-rápido en CPU / ~25-35 tok/s / 1.9 GB)</option>
+                                <option value="qwen2.5:7b-instruct" selected>⚖️ Qwen 2.5 7B Instruct (Equilibrado / Alta precisión / 4.7 GB)</option>
+                                <option value="qwen2.5:14b-instruct">🏛️ Qwen 2.5 14B Instruct (Máxima elocuencia / Workstations 32GB+)</option>
+                            </select>
                         </div>
                     </div>
 

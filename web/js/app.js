@@ -71,7 +71,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             if (data.gemini_model) document.getElementById("cfg-gemini-model").value = data.gemini_model;
             if (data.local_url) document.getElementById("cfg-local-url").value = data.local_url;
-            if (data.local_model) document.getElementById("cfg-local-model").value = data.local_model;
+            if (data.local_model) {
+                const cfgLocal = document.getElementById("cfg-local-model");
+                if (cfgLocal) cfgLocal.value = data.local_model;
+                const quickSelect = document.getElementById("quick-model-select");
+                if (quickSelect) quickSelect.value = data.local_model;
+            }
 
         } catch (e) {
             console.error("No se pudo conectar al backend de Sadigua:", e);
@@ -653,6 +658,43 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (e) {
             alert("Error de conexión: " + e.message);
+        }
+    });
+
+    // Selector rápido de modelo en la barra del chat
+    document.getElementById("quick-model-select")?.addEventListener("change", async (e) => {
+        const newModel = e.target.value;
+        const cfgLocal = document.getElementById("cfg-local-model");
+        if (cfgLocal) cfgLocal.value = newModel;
+
+        const payload = {
+            llm_provider: "local",
+            local_model: newModel
+        };
+
+        try {
+            const res = await fetch("/api/system/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                await loadSystemStatus();
+                const indicator = document.getElementById("chat-grounding-indicator");
+                if (indicator) {
+                    const originalText = indicator.textContent;
+                    indicator.textContent = `✓ Modelo conmutado a ${newModel}`;
+                    indicator.style.background = "#DBEAFE";
+                    indicator.style.color = "#1D4ED8";
+                    setTimeout(() => {
+                        indicator.textContent = originalText;
+                        indicator.style.background = "";
+                        indicator.style.color = "";
+                    }, 3500);
+                }
+            }
+        } catch (err) {
+            console.error("Error cambiando modelo rápido:", err);
         }
     });
 
