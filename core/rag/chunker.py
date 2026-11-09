@@ -31,7 +31,7 @@ class LegalHierarchicalChunker:
             body = "\n".join(current_text_buffer).strip()
             if len(body) > 20: # Ignorar fragmentos vacíos
                 # Extraer artículos si existen
-                art_match = re.search(r'(ARTÍCULO\s+\d+[\.\w\s]*)', current_section or body, re.IGNORECASE)
+                art_match = re.search(r'((?:ART[IÍ]CULO|Art[ií]culo|Art\.)\s+\d+[\.\°\º]*)', current_section or body, re.IGNORECASE)
                 articulo = art_match.group(1).strip() if art_match else ""
 
                 header_prefix = " > ".join(filter(None, [current_h1, current_h2, current_h3, current_section]))
@@ -71,6 +71,19 @@ class LegalHierarchicalChunker:
             elif stripped.startswith("#### "):
                 flush_buffer()
                 current_section = stripped[5:].strip()
+            elif re.match(r'^(?:T[IÍ]TULO|T[ií]tulo)\s+[IVXLCDM\d]+', stripped, re.IGNORECASE):
+                flush_buffer()
+                current_h2 = stripped
+                current_h3 = ""
+                current_section = current_h2
+            elif re.match(r'^(?:CAP[IÍ]TULO|Cap[ií]tulo)\s+[IVXLCDM\d]+', stripped, re.IGNORECASE):
+                flush_buffer()
+                current_h3 = stripped
+                current_section = current_h3
+            elif re.match(r'^(?:ART[IÍ]CULO|Art[ií]culo|Art\.)\s+\d+', stripped, re.IGNORECASE):
+                flush_buffer()
+                current_section = stripped
+                current_text_buffer.append(stripped)
             else:
                 if stripped:
                     current_text_buffer.append(stripped)

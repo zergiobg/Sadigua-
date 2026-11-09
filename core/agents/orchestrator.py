@@ -194,13 +194,25 @@ class SadiguaOrchestrator:
         - Auto-Continuation Guard en Onda 2 si la recomendación no concluye en punto.
         - Grounding final y Archivo de Precedente en Bóveda.
         """
+        # Fase 0: Escudo PII y Tokenización Sub-léxica
+        approx_q_tokens = max(1, int(len(user_query.split()) * 1.35))
+        yield {
+            "type": "phase",
+            "phase": "tokenization",
+            "layer": 1,
+            "message": f"Tokenización sub-léxica y normalización conceptual ({approx_q_tokens} tokens de entrada)...",
+            "query_tokens": approx_q_tokens,
+            "progress": 6
+        }
+
         # Fase 1: Caché Semántico de Precedentes (si no se solicita omitir)
         if not skip_cache:
             yield {
                 "type": "phase",
                 "phase": "precedent_check",
+                "layer": 2,
                 "message": "Consultando Bóveda de Precedentes en Memoria Obsidiana...",
-                "progress": 10
+                "progress": 14
             }
 
             cached = await self.semantic_cache.check_precedent(user_query)
@@ -220,12 +232,13 @@ class SadiguaOrchestrator:
                 yield {"type": "done", "note_id": cached["note_id"]}
                 return
 
-        # Fase 2: Recuperación RAG Híbrida
+        # Fase 2: Recuperación RAG Híbrida (BM25 Léxico + Embebimiento Vectorial)
         yield {
             "type": "phase",
             "phase": "retrieval",
-            "message": "Iniciando recuperación híbrida (BM25 Léxico + BGE-M3 Vectorial)...",
-            "progress": 25
+            "layer": 3,
+            "message": "Búsqueda léxica exacta BM25 sobre códigos y artículos vigentes...",
+            "progress": 24
         }
 
         retrieved_docs: List[Dict[str, Any]] = []
@@ -239,12 +252,22 @@ class SadiguaOrchestrator:
                 )
                 await pipeline.ingest_corpus()
 
+            yield {
+                "type": "phase",
+                "phase": "vector_embedding",
+                "layer": 4,
+                "message": "Proyectando embebimiento vectorial denso (BGE-M3) en hiperespacio semántico...",
+                "progress": 34
+            }
+
             candidates = await self.retriever.retrieve(user_query, top_k=6)
             yield {
                 "type": "phase",
                 "phase": "rerank",
-                "message": f"Reranking neural de precisión sobre {len(candidates)} fragmentos normativos...",
-                "progress": 40
+                "layer": 5,
+                "message": f"Fusión RRF y Reranking neural de precisión sobre {len(candidates)} fragmentos normativos...",
+                "candidates_count": len(candidates),
+                "progress": 45
             }
             retrieved_docs = self.reranker.rerank(user_query, candidates, top_n=3)
 
@@ -278,7 +301,7 @@ class SadiguaOrchestrator:
         yield {
             "type": "phase",
             "phase": "wave_1_start",
-            "message": "Transmitiendo Onda 1: Dictamen y Fundamento Jurídico Inmediato...",
+            "message": "Atención neural sobre normas recuperadas — Generando Onda 1 (Dictamen)...",
             "wave": 1,
             "progress": 60
         }
@@ -351,7 +374,7 @@ class SadiguaOrchestrator:
         yield {
             "type": "phase",
             "phase": "wave_1_done",
-            "message": "Onda 1 entregada. Cocinando Onda 2: Ruta Procesal, Tutela y Recursos...",
+            "message": "Onda 1 entregada. Generando Onda 2: Ruta Procesal, Tutela y Recursos...",
             "wave": 1,
             "progress": 75
         }

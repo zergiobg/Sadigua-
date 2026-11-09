@@ -3,166 +3,426 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SADIGUA — Shell Soberano de Inteligencia Artificial</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <title>SADIGUA — Cerebro AI Local | Bochica Networks</title>
+    <link rel="icon" type="image/png" href="/assets/sadigua-icon.png">
+    <link rel="stylesheet" href="/css/styles.css?v=3">
 </head>
 <body>
 
-    <!-- BARRA SUPERIOR -->
-    <header class="top-header">
-        <div class="brand-section">
-            <div class="brand-logo">S</div>
-            <div>
-                <h1 class="brand-title">SADIGUA</h1>
-                <p class="brand-subtitle">Shell Soberano de Inteligencia Artificial & Gestión del Conocimiento</p>
+    <!-- LIENZO GLOBAL DE TRANSPORTE SINÁPTICO DE DATOS (60 FPS) -->
+    <canvas id="synaptic-bridge-canvas" aria-hidden="true"></canvas>
+
+    <!-- FONDO OSCURO PARA CERRAR MENÚ DESPLEGABLE LATERAL -->
+    <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+    <!-- =========================================================
+         MENÚ DESPLEGABLE LATERAL (NAVEGACIÓN, TELEMETRÍA Y ESCUDOS)
+         ========================================================= -->
+    <aside id="cyber-drawer" class="cyber-drawer" aria-label="Menú Principal y Estado del Sistema">
+        <div class="drawer-header">
+            <div class="drawer-brand">
+                <img src="/assets/sadigua-icon.png" alt="Sadigua" class="drawer-logo-img">
+                <div>
+                    <div class="drawer-brand-title">SADIGUA</div>
+                    <div class="drawer-brand-sub">CEREBRO AI LOCAL • BOCHICA</div>
+                </div>
+            </div>
+            <button type="button" id="btn-close-drawer" class="drawer-close-btn" title="Cerrar menú (Esc)">✕</button>
+        </div>
+
+        <div class="drawer-section">
+            <div class="drawer-section-label">Módulos Cognitivos</div>
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-tab="tab-chat" data-title="Consultorio Jurídico">
+                    <span class="nav-icon">⚡</span>
+                    <span>Consultorio Jurídico</span>
+                </div>
+                <div class="nav-item" data-tab="tab-vault" data-title="Cerebro Obsidiano">
+                    <span class="nav-icon">🧠</span>
+                    <span>Cerebro Obsidiano</span>
+                </div>
+                <div class="nav-item" data-tab="tab-cartridges" data-title="Cartuchos & Fuentes">
+                    <span class="nav-icon">📚</span>
+                    <span>Cartuchos & Fuentes</span>
+                </div>
+                <div class="nav-item" data-tab="tab-settings" data-title="Configuración MLOps">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Configuración MLOps</span>
+                </div>
+            </nav>
+        </div>
+
+        <div class="drawer-section">
+            <div class="drawer-section-label">Salvaguardas del Consultorio</div>
+            <div class="drawer-controls-box">
+                <label class="switch-label drawer-switch">
+                    <input type="checkbox" id="chk-anonymize" checked>
+                    <span>🛡️ Escudo Anonimización PII (Ley 1581)</span>
+                </label>
+                <div class="drawer-badge-row">
+                    <span class="badge badge-green" id="chat-grounding-indicator">
+                        ✓ Guardián Anti-Alucinaciones Activo
+                    </span>
+                </div>
             </div>
         </div>
 
-        <div class="status-badges">
-            <span class="badge badge-green" id="badge-sovereignty">
-                <span>🔒</span> <strong>Soberanía: 100% Local</strong>
-            </span>
-            <span class="badge badge-blue" id="badge-engine">
-                <span>⚡ Motor:</span> <strong id="header-provider">Local (qwen2.5:14b)</strong>
-            </span>
-            <span class="badge" id="badge-cartridge">
-                <span>📁 Cartucho:</span> <strong id="header-cartridge">legal_co</strong>
-            </span>
-            <span class="badge badge-green" id="badge-vault">
-                <span>🧠 Vault:</span> <strong>Obsidian Activo</strong>
-            </span>
-            <span class="badge" id="badge-ram">
-                <span>💻 RAM:</span> <strong>64 GB Disponible</strong>
-            </span>
+        <div class="drawer-section">
+            <div class="drawer-section-label">Telemetría del Nodo Local</div>
+            <div class="status-badges drawer-telemetry-list">
+                <span class="badge badge-green" id="badge-sovereignty">
+                    <span>🔒</span> <strong>Soberanía: 100% Local</strong>
+                </span>
+                <span class="badge badge-blue" id="badge-engine">
+                    <span>⚡ Motor:</span> <strong id="header-provider">Local (qwen2.5:7b)</strong>
+                </span>
+                <span class="badge" id="badge-cartridge">
+                    <span>📁 Cartucho:</span> <strong id="header-cartridge">legal_co</strong>
+                </span>
+                <span class="badge badge-green" id="badge-vault">
+                    <span>🧠 Vault:</span> <strong>Obsidian Activo</strong>
+                </span>
+                <span class="badge" id="badge-ram">
+                    <span>💻 RAM:</span> <strong id="header-ram-val">64 GB Disponible</strong>
+                </span>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <p class="footer-highlight">SADIGUA • CEREBRO AI LOCAL</p>
+            <p>by BOCHICA NETWORKS • Puerto 7837</p>
+            <p>Privacidad Ley 1581 / Conpes 4144</p>
+        </div>
+    </aside>
+
+    <!-- =========================================================
+         BARRA SUPERIOR ULTRA-COMPACTA (MÁXIMA ÁREA DE RESPUESTA)
+         ========================================================= -->
+    <header class="top-header">
+        <div class="top-left-group">
+            <button type="button" id="btn-toggle-drawer" class="drawer-trigger-btn" title="Abrir Menú, Navegación y Telemetría del Sistema">
+                <span class="hamburger-lines">
+                    <span></span><span></span><span></span>
+                </span>
+                <span class="drawer-trigger-text">Menú</span>
+            </button>
+
+            <div class="brand-section">
+                <img src="/assets/sadigua-icon.png" alt="Emblema Sadigua" class="brand-logo-img">
+                <div class="brand-titles-inline">
+                    <h1 class="brand-title">SADIGUA</h1>
+                    <span class="brand-divider">•</span>
+                    <span class="active-view-indicator" id="active-view-title">Consultorio Jurídico</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="top-right-controls">
+            <button type="button" id="btn-toggle-brain-stage" class="btn-brain-toggle active" title="Mostrar / Ocultar panel del Cerebro Animado para ampliar lectura">
+                <span>🧠</span>
+                <span id="brain-stage-toggle-label">Núcleo Activo</span>
+            </button>
+
+            <div class="compact-model-pill" title="Seleccionar modelo cuantizado local">
+                <label for="quick-model-select">GPT Local:</label>
+                <select id="quick-model-select" class="compact-select">
+                    <option value="qwen2.5:3b-instruct">⚡ Qwen 2.5 3B (~25 tok/s)</option>
+                    <option value="qwen2.5:7b-instruct" selected>⚖️ Qwen 2.5 7B (Equilibrado)</option>
+                    <option value="qwen2.5:14b-instruct">🏛️ Qwen 2.5 14B (Alta Elocuencia)</option>
+                </select>
+            </div>
+
+            <button type="button" id="btn-toggle-comparison" class="btn-compare-toggle" title="Dividir pantalla 50/50: Modelo Local vs Google Gemini">
+                <span class="compare-icon">⚖️</span>
+                <span id="compare-toggle-label">Comparar vs Gemini</span>
+            </button>
+
+            <button type="button" id="btn-quick-telemetry" class="sovereignty-mini-pill" title="Ver estado completo de soberanía y hardware">
+                <span class="pulse-dot-mint"></span>
+                <span id="mini-sovereignty-text">100% Local</span>
+            </button>
         </div>
     </header>
 
-    <!-- CONTENEDOR PRINCIPAL CON SIDEBAR -->
+    <!-- CONTENEDOR PRINCIPAL A PANTALLA COMPLETA -->
     <div class="main-wrapper">
-        <nav class="sidebar-nav">
-            <div class="nav-item active" data-tab="tab-chat">
-                <span class="nav-icon">💬</span>
-                <span>Consultorio Jurídico</span>
-            </div>
-            <div class="nav-item" data-tab="tab-vault">
-                <span class="nav-icon">🧠</span>
-                <span>Cerebro Obsidiano</span>
-            </div>
-            <div class="nav-item" data-tab="tab-cartridges">
-                <span class="nav-icon">📚</span>
-                <span>Cartuchos & Fuentes</span>
-            </div>
-            <div class="nav-item" data-tab="tab-settings">
-                <span class="nav-icon">⚙️</span>
-                <span>Configuración MLOps</span>
-            </div>
-
-            <div class="sidebar-footer">
-                <p>Sadigua v1.0.0 Soberano</p>
-                <p>Privacidad Ley 1581 / Conpes 4144</p>
-            </div>
-        </nav>
 
         <!-- =========================================================
-             VISTA 1: CONSULTORIO JURÍDICO (CHAT)
+             VISTA 1: CONSULTORIO JURÍDICO (NÚCLEO COGNITIVO + CONTEXTO)
              ========================================================= -->
         <main class="content-view active" id="tab-chat">
-            <div class="chat-container">
-                <div class="chat-banner" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                        <label class="switch-label">
-                            <input type="checkbox" id="chk-anonymize" checked>
-                            <span>🛡️ Anonimización PII</span>
-                        </label>
-                        <span class="badge badge-green" id="chat-grounding-indicator">
-                            ✓ Anti-Alucinaciones
-                        </span>
-                        <button type="button" id="btn-toggle-comparison" class="btn-compare-toggle" title="Dividir pantalla para comparar en paralelo Modelo Local vs Google Gemini">
-                            <span class="compare-icon">⚖️</span>
-                            <span id="compare-toggle-label">Modo Comparativo: Inactivo</span>
-                        </button>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <label for="quick-model-select" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Modelo Local:</label>
-                        <select id="quick-model-select" class="form-control" style="padding: 4px 10px; font-size: 12px; height: 32px; width: auto; font-weight: 600; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px;">
-                            <option value="qwen2.5:3b-instruct">⚡ Qwen 2.5 3B (Ultra-Rápido ~25 tok/s)</option>
-                            <option value="qwen2.5:7b-instruct" selected>⚖️ Qwen 2.5 7B (Equilibrado ~9 tok/s)</option>
-                            <option value="qwen2.5:14b-instruct">🏛️ Qwen 2.5 14B (Alta Elocuencia 32GB+)</option>
-                        </select>
-                    </div>
-                </div>
+            <div class="neural-cockpit" id="neural-cockpit">
 
-                <!-- BANNER INFORMATIVO: MODO COMPARATIVO ACTIVO -->
-                <div id="comparison-active-banner" class="comparison-active-banner hidden">
-                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 18px;">⚖️</span>
-                            <div>
-                                <strong style="color: var(--primary-blue); font-size: 13px;">Arena Pedagógica Activa: Modelo Local Soberano vs Google Gemini Cloud</strong>
-                                <p style="margin: 0; font-size: 11.5px; color: var(--text-secondary);">
-                                    Ambos modelos responderán en paralelo a la misma consulta con el mismo corpus normativo, cotejando soberanía, costo ($0 vs API), tiempo y precisión jurídica.
-                                </p>
-                            </div>
+                <!-- COLUMNA IZQUIERDA: CEREBRO ANIMADO SADIGUA & MODAL PEDAGÓGICA -->
+                <section class="neural-stage-panel" id="neural-stage-panel" aria-label="Núcleo Cognitivo Pedagógico Sadigua">
+                    <!-- Barra superior del reactor neuronal -->
+                    <div class="stage-top-bar">
+                        <div class="stage-status-chip" id="stage-status-chip">
+                            <span class="stage-live-dot" id="stage-live-dot"></span>
+                            <span id="stage-state-text">NÚCLEO EN REPOSO SINÁPTICO</span>
                         </div>
-                        <span class="badge badge-blue">Pantalla Dividida (50/50)</span>
-                    </div>
-                </div>
-
-                <div class="messages-area" id="chat-messages">
-                    <div class="msg-wrapper assistant">
-                        <div class="msg-avatar assistant">S</div>
-                        <div class="msg-bubble">
-                            <strong>Bienvenido a Sadigua.</strong><br>
-                            Soy tu asistente soberano para análisis jurídico, litigio y consulta normativa. 
-                            Todas mis respuestas están estrictamente fundamentadas en el corpus legal curado (Constitución, Códigos, Leyes y Jurisprudencia) y verificadas contra alucinaciones.<br><br>
-                            <em>¿Qué caso o disposición legal deseas consultar hoy?</em>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- HUD DE TELEMETRÍA EN VIVO (Generación Progresiva en Ondas & Caché Semántico) -->
-                <div id="chat-hud" class="chat-hud hidden">
-                    <div class="hud-header">
-                        <div class="hud-phase-status">
-                            <span class="hud-spinner"></span>
-                            <span id="hud-phase-label">Iniciando consulta jurídica...</span>
-                        </div>
-                        <div class="hud-timer-badge">
+                        <div class="hud-timer-badge" title="Tiempo transcurrido de procesamiento">
                             ⏱️ <span id="hud-stopwatch">00:00.0</span>s
                         </div>
                     </div>
-                    
+
+                    <!-- Barra de progreso neuronal multicapa -->
                     <div class="hud-progress-track">
-                        <div id="hud-progress-fill" class="hud-progress-fill" style="width: 5%;"></div>
+                        <div id="hud-progress-fill" class="hud-progress-fill" style="width: 0%;"></div>
                     </div>
-                    
-                    <div class="hud-details">
-                        <div class="hud-waves-indicator">
-                            <span id="hud-badge-cache" class="wave-pill cache-pill hidden">⚡ Precedente en Bóveda</span>
-                            <span id="hud-badge-wave1" class="wave-pill">Onda 1: Dictamen y Fundamento</span>
-                            <span id="hud-badge-wave2" class="wave-pill pending">Onda 2: Procedimiento y Tutela</span>
-                        </div>
-                        <div id="hud-docs-list" class="hud-docs-list">
-                            <!-- Píldoras de documentos consultados -->
+
+                    <!-- Botonera secuencial de las 7 Etapas con intermitencia activa -->
+                    <div class="layer-stepper" id="layer-stepper" title="Secuencia de procesamiento neuronal (haz clic en cualquier etapa en reposo para inspeccionar)">
+                        <button type="button" class="layer-step-btn" data-layer="1"><span class="step-beacon"></span><span>1. PII/Tokens</span></button>
+                        <button type="button" class="layer-step-btn" data-layer="2"><span class="step-beacon"></span><span>2. Memoria</span></button>
+                        <button type="button" class="layer-step-btn" data-layer="3"><span class="step-beacon"></span><span>3. BM25</span></button>
+                        <button type="button" class="layer-step-btn" data-layer="4"><span class="step-beacon"></span><span>4. Vectores</span></button>
+                        <button type="button" class="layer-step-btn" data-layer="5"><span class="step-beacon"></span><span>5. Atención</span></button>
+                        <button type="button" class="layer-step-btn" data-layer="6"><span class="step-beacon"></span><span>6. Síntesis</span></button>
+                        <button type="button" class="layer-step-btn" data-layer="7"><span class="step-beacon"></span><span>7. Grounding</span></button>
+                    </div>
+
+                    <!-- ESCENARIO HOLOGRÁFICO DEL CEREBRO OFICIAL SADIGUA (LIMPIO, SIN BOTONES ENCIMA) -->
+                    <div class="brain-hologram-stage" id="brain-hologram-stage" data-active-zone="0">
+                        <div class="brain-ambient-halo"></div>
+
+                        <div class="brain-artwork-container" id="brain-artwork-container">
+                            <img src="/assets/sadigua-brain.jpg" alt="Sadigua Cerebro AI Local by Bochica Networks" class="sadigua-brain-img">
+
+                            <!-- RIG ANATÓMICO SVG CALIBRADO PIXEL A PIXEL (782 x 1024) — TRAZAS NEURONALES PURAS -->
+                            <svg id="brain-anatomy-svg" class="brain-anatomy-svg" viewBox="0 0 782 1024" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <filter id="glow-mint" x="-40%" y="-40%" width="180%" height="180%">
+                                        <feGaussianBlur stdDeviation="7" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                    <filter id="glow-cyan" x="-40%" y="-40%" width="180%" height="180%">
+                                        <feGaussianBlur stdDeviation="8" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                    <filter id="glow-sapphire" x="-40%" y="-40%" width="180%" height="180%">
+                                        <feGaussianBlur stdDeviation="8" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                    <filter id="glow-totem-eyes" x="-80%" y="-80%" width="260%" height="260%">
+                                        <feGaussianBlur stdDeviation="14" result="bigBlur" />
+                                        <feGaussianBlur stdDeviation="4" result="sharpBlur" />
+                                        <feMerge>
+                                            <feMergeNode in="bigBlur" />
+                                            <feMergeNode in="sharpBlur" />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                    <linearGradient id="grad-muisca-collar" x1="0%" y1="100%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="#34E8B0" />
+                                        <stop offset="50%" stop-color="#00E5FF" />
+                                        <stop offset="100%" stop-color="#38BDF8" />
+                                    </linearGradient>
+                                    <linearGradient id="grad-halo-shield" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#34E8B0" />
+                                        <stop offset="50%" stop-color="#00E5FF" />
+                                        <stop offset="100%" stop-color="#0EA5E9" />
+                                    </linearGradient>
+                                    <radialGradient id="grad-eye-flash" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1" />
+                                        <stop offset="35%" stop-color="#7CF9FF" stop-opacity="0.92" />
+                                        <stop offset="70%" stop-color="#34E8B0" stop-opacity="0.45" />
+                                        <stop offset="100%" stop-color="#00E5FF" stop-opacity="0" />
+                                    </radialGradient>
+                                </defs>
+
+                                <!-- ZONA 7: ANILLO PROTECTOR MUISCA (GROUNDING ANTI-ALUCINACIONES) -->
+                                <g class="brain-zone zone-7" data-zone="7">
+                                    <circle cx="391" cy="382" r="348" class="halo-shield-track" />
+                                    <path d="M 88 425 Q 150 665 391 708 Q 632 665 694 425" class="neural-trace collar-arc" filter="url(#glow-mint)" />
+                                </g>
+
+                                <!-- ZONA 1: COLLAR PECTORAL MUISCA & FILAMENTOS (ESCUDO PII & TOKENIZACIÓN) -->
+                                <g class="brain-zone zone-1" data-zone="1" filter="url(#glow-cyan)">
+                                    <path d="M 88 425 Q 150 665 391 708 Q 632 665 694 425" class="neural-trace collar-arc" />
+                                    <polygon points="120,490 175,445 192,555" class="muisca-tri t1" />
+                                    <polygon points="205,575 262,535 278,638" class="muisca-tri t2" />
+                                    <polygon points="305,645 391,615 385,704" class="muisca-tri t3" />
+                                    <polygon points="477,645 397,615 402,704" class="muisca-tri t4" />
+                                    <polygon points="577,575 520,535 504,638" class="muisca-tri t5" />
+                                    <polygon points="662,490 607,445 590,555" class="muisca-tri t6" />
+                                    <line x1="248" y1="620" x2="248" y2="465" class="token-beam b1" />
+                                    <line x1="318" y1="665" x2="318" y2="495" class="token-beam b2" />
+                                    <line x1="391" y1="702" x2="391" y2="545" class="token-beam b3" />
+                                    <line x1="469" y1="665" x2="469" y2="495" class="token-beam b4" />
+                                    <line x1="540" y1="620" x2="540" y2="465" class="token-beam b5" />
+                                </g>
+
+                                <!-- ZONA 2: ESPIRALES OCULARES ORFEBRES (MEMORIA OBSIDIANA & CACHÉ) -->
+                                <g class="brain-zone zone-2" data-zone="2" filter="url(#glow-mint)">
+                                    <rect x="284" y="374" width="88" height="76" rx="8" class="eye-scanner-frame" />
+                                    <polyline points="331,411 347,411 347,395 308,395 308,431 356,431" class="eye-spiral-path" />
+                                    <rect x="408" y="374" width="88" height="76" rx="8" class="eye-scanner-frame" />
+                                    <polyline points="447,412 431,412 431,395 470,395 470,431 422,431" class="eye-spiral-path" />
+                                    <path d="M 369 402 L 391 355 L 418 402" class="neural-trace mint-trace" />
+                                </g>
+
+                                <!-- ZONA 3: HEMISFERIO IZQUIERDO ESMERALDA (BÚSQUEDA LÉXICA BM25) -->
+                                <g class="brain-zone zone-3" data-zone="3" filter="url(#glow-mint)">
+                                    <path d="M 374 44 C 210 52, 55 180, 34 358 C 95 380, 195 385, 258 352 C 295 280, 345 255, 378 265 Z" class="hemisphere-aura left-aura" />
+                                    <path d="M 143 211 L 201 242 L 318 320 L 356 312" class="neural-trace mint-trace" />
+                                    <path d="M 286 171 L 315 245 L 362 296" class="neural-trace mint-trace" />
+                                    <path d="M 142 310 L 245 335 L 337 366 L 362 332" class="neural-trace mint-trace" />
+                                    <circle cx="286" cy="171" r="4" class="synapse-node mint" />
+                                    <circle cx="143" cy="211" r="4" class="synapse-node mint" />
+                                    <circle cx="201" cy="242" r="4" class="synapse-node mint" />
+                                    <circle cx="142" cy="310" r="4" class="synapse-node mint" />
+                                    <circle cx="337" cy="366" r="4" class="synapse-node mint" />
+                                </g>
+
+                                <!-- ZONA 4: HEMISFERIO DERECHO ZAFIRO (EMBEBIMIENTO VECTORIAL DENSO BGE-M3) -->
+                                <g class="brain-zone zone-4" data-zone="4" filter="url(#glow-sapphire)">
+                                    <path d="M 408 44 C 572 52, 727 180, 748 358 C 687 380, 587 385, 524 352 C 487 280, 437 255, 404 265 Z" class="hemisphere-aura right-aura" />
+                                    <path d="M 636 112 L 533 111 L 490 174 L 424 296" class="neural-trace sapphire-trace" />
+                                    <path d="M 642 205 L 585 242 L 461 320 L 424 312" class="neural-trace sapphire-trace" />
+                                    <path d="M 724 252 L 667 243 L 585 242" class="neural-trace sapphire-trace" />
+                                    <path d="M 721 309 L 595 335 L 461 366 L 422 330" class="neural-trace sapphire-trace" />
+                                    <circle cx="533" cy="111" r="4" class="synapse-node sapphire" />
+                                    <circle cx="636" cy="112" r="4" class="synapse-node cyan" />
+                                    <circle cx="490" cy="174" r="4" class="synapse-node cyan" />
+                                    <circle cx="642" cy="205" r="4" class="synapse-node sapphire" />
+                                    <circle cx="585" cy="242" r="4" class="synapse-node sapphire" />
+                                    <circle cx="724" cy="252" r="4" class="synapse-node cyan" />
+                                    <circle cx="721" cy="309" r="4" class="synapse-node sapphire" />
+                                </g>
+
+                                <!-- ZONA 5: TERCER OJO / MICROCHIP CENTRAL (FUSIÓN RRF, RERANKING Y ATENCIÓN) -->
+                                <g class="brain-zone zone-5" data-zone="5" filter="url(#glow-cyan)">
+                                    <line x1="310" y1="298" x2="356" y2="298" class="chip-pin" />
+                                    <line x1="302" y1="313" x2="356" y2="313" class="chip-pin" />
+                                    <line x1="310" y1="328" x2="356" y2="328" class="chip-pin" />
+                                    <line x1="426" y1="298" x2="472" y2="298" class="chip-pin" />
+                                    <line x1="426" y1="313" x2="480" y2="313" class="chip-pin" />
+                                    <line x1="426" y1="328" x2="472" y2="328" class="chip-pin" />
+                                    <rect x="356" y="278" width="70" height="70" rx="8" class="cpu-core-outer" />
+                                    <rect x="369" y="291" width="44" height="44" rx="4" class="cpu-core-inner" />
+                                </g>
+
+                                <!-- ZONA 6: SÍNTESIS TRANSFORMER GLOBAL ( CAMINOS SINÁPTICOS PUROS SIN CÍRCULOS ) -->
+                                <g class="brain-zone zone-6" data-zone="6" filter="url(#glow-cyan)">
+                                    <path d="M 201 242 L 356 312 L 426 312 L 585 242 L 721 309" class="neural-trace synthesis-bridge" />
+                                    <path d="M 286 171 L 391 278 L 490 174 L 642 205 L 721 309" class="neural-trace synthesis-bridge delay-1" />
+                                </g>
+
+                                <!-- DESTELLO / GLOW FINAL EN LOS OJOS DEL TÓTEM AL CONCLUIR -->
+                                <g id="totem-eyes-finale" class="totem-eyes-finale" filter="url(#glow-totem-eyes)">
+                                    <!-- Ojo Izquierdo del Tótem (331, 411) -->
+                                    <ellipse cx="331" cy="411" rx="48" ry="38" fill="url(#grad-eye-flash)" />
+                                    <polyline points="331,411 347,411 347,395 308,395 308,431 356,431" class="totem-eye-spiral" />
+                                    <line x1="215" y1="411" x2="447" y2="411" class="totem-eye-streak" />
+                                    <!-- Ojo Derecho del Tótem (447, 412) -->
+                                    <ellipse cx="447" cy="412" rx="48" ry="38" fill="url(#grad-eye-flash)" />
+                                    <polyline points="447,412 431,412 431,395 470,395 470,431 422,431" class="totem-eye-spiral" />
+                                    <line x1="331" y1="412" x2="563" y2="412" class="totem-eye-streak" />
+                                </g>
+                            </svg>
                         </div>
                     </div>
-                </div>
 
-                <!-- Sugerencias rápidas -->
-                <div class="quick-prompts">
-                    <span class="prompt-pill" data-query="¿Cómo opera el juramento estimatorio según el artículo 206 del CGP?">⚖️ Juramento Estimatorio (Art. 206 CGP)</span>
-                    <span class="prompt-pill" data-query="¿Cuáles son los principios para el tratamiento de datos y soberanía según la Ley 1581 y el Conpes 4144?">🔐 Soberanía de Datos y Ley 1581</span>
-                    <span class="prompt-pill" data-query="¿Cuáles son los requisitos para decretar una medida cautelar innominada según el artículo 590 del CGP?">📋 Medidas Cautelares (Art. 590 CGP)</span>
-                    <span class="prompt-pill" data-query="¿Cuáles son los términos para resolver una acción de tutela según la Constitución?">📜 Acción de Tutela (Art. 86)</span>
-                </div>
+                    <!-- MICRO-MODAL PEDAGÓGICA EN VIVO + FLUJO SECUENCIAL DE LA RESPUESTA -->
+                    <div class="brain-pedagogical-modal" id="brain-pedagogical-modal">
+                        <div class="ped-modal-header">
+                            <span class="ped-layer-badge" id="ped-layer-badge">MODO AULA INTERACTIVA</span>
+                            <span class="ped-region-tag" id="ped-region-tag">Haz clic en etapas 1–7</span>
+                        </div>
+                        <h4 class="ped-layer-title" id="ped-layer-title">Arquitectura Cognitiva Soberana</h4>
+                        <p class="ped-layer-desc" id="ped-layer-desc">
+                            Envía una consulta jurídica para observar paso a paso qué región del cerebro se activa primero y cómo fluye la construcción del dictamen hacia la ventana de contexto.
+                        </p>
 
-                <!-- Barra de entrada -->
-                <div class="chat-input-bar">
-                    <textarea id="chat-input" rows="1" placeholder="Escribe tu consulta jurídica o describe los hechos del caso..."></textarea>
-                    <button class="btn-send" id="btn-send">
-                        <span>Consultar</span>
-                        <span>➔</span>
-                    </button>
+                        <!-- MAPA DE ORDEN DE GENERACIÓN (QUÉ VA PRIMERO Y QUÉ VA DESPUÉS) -->
+                        <div class="response-flow-box" id="response-flow-box">
+                            <div class="response-flow-header">Flujo de Construcción de la Respuesta:</div>
+                            <div class="response-flow-track" id="response-flow-track">
+                                <span class="flow-step" data-flow="1">1. RAG & Normas</span>
+                                <span class="flow-arrow">➔</span>
+                                <span class="flow-step" data-flow="2">2. Veredicto</span>
+                                <span class="flow-arrow">➔</span>
+                                <span class="flow-step" data-flow="3">3. Fundamento</span>
+                                <span class="flow-arrow">➔</span>
+                                <span class="flow-step" data-flow="4">4. Subsunción</span>
+                                <span class="flow-arrow">➔</span>
+                                <span class="flow-step" data-flow="5">5. Ruta Procesal</span>
+                                <span class="flow-arrow">➔</span>
+                                <span class="flow-step" data-flow="6">6. Tutela & Sello</span>
+                            </div>
+                        </div>
+
+                        <!-- Telemetría viva integrada -->
+                        <div id="chat-hud" class="ped-live-telemetry">
+                            <div class="ped-phase-line">
+                                <span class="hud-spinner" id="ped-live-spinner" style="display: none;"></span>
+                                <span id="hud-phase-label">Listo para procesar en hardware local.</span>
+                            </div>
+                            <div class="hud-waves-indicator">
+                                <span id="hud-badge-cache" class="wave-pill cache-pill hidden">⚡ Precedente</span>
+                                <span id="hud-badge-wave1" class="wave-pill pending">1º Onda 1: Dictamen</span>
+                                <span id="hud-badge-wave2" class="wave-pill pending">2º Onda 2: Ruta Procesal</span>
+                            </div>
+                            <div id="hud-docs-list" class="hud-docs-list"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- COLUMNA DERECHA: VENTANA MAXIMIZADA DE CONTEXTO Y DICTAMEN -->
+                <div class="chat-container" id="chat-context-window">
+
+                    <!-- BANNER INFORMATIVO COMPACTO: MODO COMPARATIVO ACTIVO -->
+                    <div id="comparison-active-banner" class="comparison-active-banner hidden">
+                        <div class="comp-banner-inner">
+                            <div class="comp-banner-left">
+                                <span>⚖️</span>
+                                <strong>Arena Pedagógica 50/50: GPT Local Soberano vs Google Gemini Cloud</strong>
+                                <span class="comp-banner-sub">— Scroll independiente en cada ventana</span>
+                            </div>
+                            <span class="badge badge-blue">Competencia Ecuánime RAG</span>
+                        </div>
+                    </div>
+
+                    <!-- ÁREA AMPLIA DE MENSAJES Y RESPUESTAS -->
+                    <div class="messages-area" id="chat-messages">
+                        <div class="msg-wrapper assistant">
+                            <div class="msg-avatar assistant">
+                                <img src="/assets/sadigua-icon.png" alt="S">
+                            </div>
+                            <div class="msg-bubble">
+                                <strong>Bienvenido a Sadigua — Cerebro AI Local.</strong><br>
+                                Soy tu núcleo soberano de análisis jurídico y litigio. Mientras proceso tu caso, podrás observar a la izquierda <strong>qué región exacta del cerebro se activa en cada capa</strong> y cómo viajan los paquetes normativos hacia esta ventana de contexto.<br><br>
+                                <em>¿Qué caso, artículo o situación jurídica deseas analizar hoy?</em>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sugerencias rápidas compactas -->
+                    <div class="quick-prompts">
+                        <span class="prompt-pill" data-query="¿Cómo opera el juramento estimatorio según el artículo 206 del CGP?">⚖️ Juramento Estimatorio (Art. 206 CGP)</span>
+                        <span class="prompt-pill" data-query="¿Cuáles son los principios para el tratamiento de datos y soberanía según la Ley 1581 y el Conpes 4144?">🔐 Soberanía de Datos y Ley 1581</span>
+                        <span class="prompt-pill" data-query="¿Cuáles son los requisitos para decretar una medida cautelar innominada según el artículo 590 del CGP?">📋 Medidas Cautelares (Art. 590 CGP)</span>
+                        <span class="prompt-pill" data-query="¿Cuáles son los términos para resolver una acción de tutela según la Constitución?">📜 Acción de Tutela (Art. 86)</span>
+                    </div>
+
+                    <!-- Barra de entrada bioluminiscente -->
+                    <div class="chat-input-bar">
+                        <textarea id="chat-input" rows="1" placeholder="Escribe tu consulta jurídica o describe los hechos del caso para activar el Cerebro Local..."></textarea>
+                        <button class="btn-send" id="btn-send">
+                            <span>Procesar</span>
+                            <span>⚡</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </main>
@@ -175,8 +435,8 @@
                 <div class="view-header">
                     <div>
                         <h2>Cerebro Obsidiano — Memoria Persistente de Expedientes</h2>
-                        <p>Notas y perfiles de clientes en formato Markdown abierto con enlaces bidireccionales <code>[[wiki]]</code>.</p>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                        <p>Notas y precedentes en formato Markdown abierto con enlaces bidireccionales <code>[[wiki]]</code>.</p>
+                        <p class="vault-path-hint">
                             📁 Carpeta local editable en Obsidian: <strong>C:\_dev\AI_BOCHICA\Cerebro\vault</strong>
                         </p>
                     </div>
@@ -215,7 +475,7 @@
                     <!-- Tarjetas de cartuchos dinámicas -->
                 </div>
 
-                <div class="view-header" style="margin-top: 30px;">
+                <div class="view-header" style="margin-top: 28px;">
                     <div>
                         <h3>Cargar Nueva Norma o Documento (PDF, MD, TXT)</h3>
                         <p>Sube archivos para incorporarlos de inmediato a la base de conocimiento del cartucho activo.</p>
@@ -224,12 +484,12 @@
 
                 <div class="upload-box" id="drop-area">
                     <p style="font-size: 28px; margin-bottom: 8px;">📄</p>
-                    <p style="font-weight: 600; color: var(--primary-blue);">Haz clic para seleccionar o arrastra un archivo PDF o Markdown aquí</p>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Soporta: .pdf, .md, .txt (Se segmentará automáticamente por artículos y secciones)</p>
+                    <p class="upload-box-title">Haz clic para seleccionar o arrastra un archivo PDF o Markdown aquí</p>
+                    <p class="upload-box-sub">Soporta: .pdf, .md, .txt (Se segmentará automáticamente por artículos y secciones)</p>
                     <input type="file" id="file-input" style="display: none;" accept=".pdf,.md,.txt">
                 </div>
 
-                <h4 style="margin: 20px 0 10px 0;">Archivos Originales en el Corpus</h4>
+                <h4 class="section-subtitle">Archivos Originales en el Corpus</h4>
                 <table class="docs-table" style="margin-bottom: 24px;">
                     <thead>
                         <tr>
@@ -244,7 +504,6 @@
                     </tbody>
                 </table>
 
-                <!-- NUEVA SECCIÓN: EXPLORADOR DEL ÍNDICE RAG Y VECTORIZACIÓN -->
                 <div class="view-header" style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
                     <div>
                         <h3>🧠 Visor de Fragmentos Indexados & Vectores en Memoria</h3>
@@ -252,33 +511,30 @@
                     </div>
                 </div>
 
-                <!-- Tarjetas de métricas de indexación -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;" id="index-stats-container">
-                    <div class="settings-card" style="margin-bottom: 0; padding: 14px;">
-                        <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700;">Fragmentos (Chunks)</span>
-                        <h2 style="color: var(--primary-blue); font-size: 24px; margin-top: 4px;" id="stat-total-chunks">-</h2>
+                <div class="stats-kpi-grid" id="index-stats-container">
+                    <div class="settings-card kpi-card">
+                        <span class="kpi-label">Fragmentos (Chunks)</span>
+                        <h2 class="kpi-val cyan" id="stat-total-chunks">-</h2>
                     </div>
-                    <div class="settings-card" style="margin-bottom: 0; padding: 14px;">
-                        <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700;">Vocabulario BM25</span>
-                        <h2 style="color: var(--primary-accent); font-size: 24px; margin-top: 4px;" id="stat-vocab-size">-</h2>
+                    <div class="settings-card kpi-card">
+                        <span class="kpi-label">Vocabulario BM25</span>
+                        <h2 class="kpi-val mint" id="stat-vocab-size">-</h2>
                     </div>
-                    <div class="settings-card" style="margin-bottom: 0; padding: 14px;">
-                        <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700;">Vectores Activos</span>
-                        <h2 style="color: #10B981; font-size: 24px; margin-top: 4px;" id="stat-vector-count">-</h2>
+                    <div class="settings-card kpi-card">
+                        <span class="kpi-label">Vectores Activos</span>
+                        <h2 class="kpi-val sapphire" id="stat-vector-count">-</h2>
                     </div>
-                    <div class="settings-card" style="margin-bottom: 0; padding: 14px;">
-                        <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700;">Fusión RAG</span>
-                        <h2 style="color: var(--text-primary); font-size: 14px; margin-top: 8px;">RRF + Reranker</h2>
+                    <div class="settings-card kpi-card">
+                        <span class="kpi-label">Fusión RAG</span>
+                        <h2 class="kpi-val ice" style="font-size: 15px; margin-top: 8px;">RRF + Reranker</h2>
                     </div>
                 </div>
 
-                <!-- Buscador de fragmentos del índice -->
                 <div style="display: flex; gap: 10px; margin-bottom: 14px;">
                     <input type="text" id="index-search-input" class="form-control" placeholder="🔍 Filtrar fragmentos indexados (ej: '206', 'tutela', '1581', 'datos')...">
                     <button class="filter-btn active" id="btn-index-search">Filtrar</button>
                 </div>
 
-                <!-- Tabla del índice de fragmentos -->
                 <table class="docs-table">
                     <thead>
                         <tr>
@@ -307,9 +563,9 @@
                     </div>
                 </div>
 
-                <div class="settings-card" style="border: 2px solid #BFDBFE; background: #F8FAFC;">
+                <div class="settings-card sovereignty-card">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                        <h3 style="color: var(--primary-blue); margin: 0;">🛡️ Compuerta de Soberanía (Control de Salida a Nube)</h3>
+                        <h3 style="color: var(--bio-mint); margin: 0;">🛡️ Compuerta de Soberanía (Control de Salida a Nube)</h3>
                         <span class="badge badge-green" id="egress-status-pill">🔒 Salida a Nube Bloqueada</span>
                     </div>
                     <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
@@ -322,14 +578,14 @@
                     </label>
                 </div>
 
-                <!-- TARJETA 2: CREDENCIALES GOOGLE GEMINI (SIEMPRE VISIBLE PARA MODO COMPARATIVO) -->
-                <div class="settings-card" id="card-gemini-credentials" style="border-left: 4px solid var(--primary-accent);">
+                <!-- TARJETA 2: CREDENCIALES GOOGLE GEMINI -->
+                <div class="settings-card" id="card-gemini-credentials" style="border-left: 4px solid var(--bio-cyan);">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                        <h3 style="margin: 0; color: var(--primary-blue);">🌐 Credenciales de Google Gemini</h3>
-                        <span class="badge" id="gemini-status-badge" style="background: #FEF3C7; color: #92400E;">⚠️ Clave No Configurada</span>
+                        <h3 style="margin: 0; color: var(--bio-cyan);">🌐 Credenciales de Google Gemini</h3>
+                        <span class="badge" id="gemini-status-badge">⚠️ Clave No Configurada</span>
                     </div>
                     <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
-                        Esta clave habilita la <strong>segunda columna en el Modo Comparativo Pedagógico</strong> del Consultorio Jurídico, 
+                        Esta clave habilita la <strong>segunda columna en el Modo Comparativo Pedagógico</strong> del Consultorio Jurídico,
                         permitiendo contrastar lado a lado la calidad, latencia, costos y soberanía de datos del modelo local frente a Gemini.
                     </p>
 
@@ -354,7 +610,7 @@
                     </div>
 
                     <div style="display: flex; justify-content: flex-end;">
-                        <button type="button" class="btn-primary" id="btn-save-gemini-key" style="background: var(--primary-blue);">
+                        <button type="button" class="btn-primary" id="btn-save-gemini-key">
                             💾 Guardar Clave Gemini
                         </button>
                     </div>
@@ -396,9 +652,9 @@
 
                 <div class="settings-card">
                     <h3>Especificaciones del Hardware Local Detectado</h3>
-                    <p><strong>Procesador:</strong> Intel Core Ultra 5 (12 núcleos, 14 subprocesos lógicos con AVX2)</p>
-                    <p><strong>Memoria RAM del Sistema:</strong> 64 GB DDR5 (Capaz de ejecutar modelos locales de 14B y 32B sin intercambio)</p>
-                    <p><strong>Soberanía de Datos:</strong> Compatible 100% con operación sin conexión (Air-gapped / Localhost)</p>
+                    <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: 6px;"><strong>Procesador:</strong> Intel Core Ultra 5 (12 núcleos, 14 subprocesos lógicos con AVX2)</p>
+                    <p style="color: var(--text-secondary); font-size: 13.5px; margin-bottom: 6px;"><strong>Memoria RAM del Sistema:</strong> 64 GB DDR5 (Capaz de ejecutar modelos locales de 14B y 32B sin intercambio)</p>
+                    <p style="color: var(--text-secondary); font-size: 13.5px;"><strong>Soberanía de Datos:</strong> Compatible 100% con operación sin conexión (Air-gapped / Localhost)</p>
                 </div>
             </div>
         </main>
@@ -409,7 +665,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modal-title">Ficha de Memoria — Cerebro Obsidiano</h3>
-                <button id="modal-close" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+                <button id="modal-close" class="modal-close-x">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -442,6 +698,7 @@
         </div>
     </div>
 
-    <script src="/js/app.js"></script>
+    <script src="/js/neural_visualizer.js?v=3"></script>
+    <script src="/js/app.js?v=3"></script>
 </body>
 </html>

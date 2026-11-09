@@ -230,7 +230,8 @@ def precedent_answer_endpoint(req: PrecedentAnswerRequest):
                     "metadata": {
                         "query": e.get("query"),
                         "grounding_status": e.get("grounding_status"),
-                        "created_at": e.get("created_at")
+                        "created_at": e.get("created_at"),
+                        "sources": e.get("sources", [])
                     }
                 }
                 break
@@ -250,7 +251,8 @@ def precedent_answer_endpoint(req: PrecedentAnswerRequest):
         "note_id": req.note_id,
         "matched_query": metadata.get("query", req.query),
         "grounding_status": metadata.get("grounding_status", "✓ Precedente Verificado en Bóveda"),
-        "created_at": metadata.get("created_at", "")
+        "created_at": metadata.get("created_at", ""),
+        "sources": metadata.get("sources", [])
     }
 
 @app.post("/api/chat/progressive")

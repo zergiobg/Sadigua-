@@ -16,5 +16,5 @@ Cuando el usuario indique **"deploy Sadigua"**, **"monta Sadigua"** o **"instala
 
 ## Principios Inmutables de Sadigua
 - **Soberanía y Privacidad**: Por defecto la salida a nubes de terceros está estrictamente bloqueada (`CLOUD_EGRESS_ENABLED=False`).
-- **Paleta Visual**: Interfaz web en azul, gris y blanco (cero modo oscuro).
+- **Paleta Visual**: Identidad **Bochica Bioluminiscente** inspirada en el arte oficial del Cerebro AI Local (`Azul Abisal #01061C / #020B14`, `Verde Esmeralda Menta #34E8B0`, `Cian Eléctrico #00E5FF`, `Azul Zafiro #0EA5E9` y tipografía `Ice White #ECF8FF`).
 - **Puerto de Red**: Siempre `7837`.

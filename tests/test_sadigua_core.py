@@ -60,6 +60,24 @@ def test_legal_hierarchical_chunker():
     assert "JURAMENTO ESTIMATORIO" in chunks[0]["section"]
     assert "LIBRO SEGUNDO" in chunks[0]["h2"]
 
+    # Prueba con texto crudo extraído de PDF sin marcas de markdown
+    raw_pdf_text = (
+        "CONSTITUCIÓN POLÍTICA DE COLOMBIA\n"
+        "TÍTULO II: DE LOS DERECHOS\n"
+        "CAPÍTULO 1: DE LOS DERECHOS FUNDAMENTALES\n"
+        "ARTÍCULO 11. El derecho a la vida es inviolable. No habrá pena de muerte.\n"
+        "ARTÍCULO 12. Nadie será sometido a desaparición forzada...\n"
+        "Artículo 15. Todas las personas tienen derecho a su intimidad...\n"
+    )
+    pdf_chunks = chunker.chunk_markdown(raw_pdf_text, source_path="constitucion.pdf")
+    # 1 preámbulo/título + 3 artículos detectados
+    assert len(pdf_chunks) == 4
+    articles = [c for c in pdf_chunks if c["articulo"]]
+    assert len(articles) == 3
+    assert "ARTÍCULO 11" in articles[0]["articulo"]
+    assert "ARTÍCULO 12" in articles[1]["articulo"]
+    assert "Artículo 15" in articles[2]["articulo"]
+
 def test_pure_bm25_exact_match():
     docs = [
         {"id": "doc_1", "content": "ARTÍCULO 206. Juramento estimatorio para reclamar indemnizaciones."},

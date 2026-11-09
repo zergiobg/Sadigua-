@@ -16,6 +16,49 @@ document.addEventListener("DOMContentLoaded", () => {
         isQuerying: false
     };
 
+    const getViz = () => window.sadiguaVisualizer || null;
+
+    // -------------------------------------------------------------
+    // MENÚ DESPLEGABLE LATERAL (CYBER DRAWER) & CABECERA COMPACTA
+    // -------------------------------------------------------------
+    const cyberDrawer = document.getElementById("cyber-drawer");
+    const drawerBackdrop = document.getElementById("drawer-backdrop");
+    const btnToggleDrawer = document.getElementById("btn-toggle-drawer");
+    const btnCloseDrawer = document.getElementById("btn-close-drawer");
+    const btnQuickTelemetry = document.getElementById("btn-quick-telemetry");
+    const activeViewTitle = document.getElementById("active-view-title");
+    const neuralCockpit = document.getElementById("neural-cockpit");
+    const btnToggleBrainStage = document.getElementById("btn-toggle-brain-stage");
+    const brainStageToggleLabel = document.getElementById("brain-stage-toggle-label");
+
+    function openDrawer() {
+        cyberDrawer?.classList.add("open");
+        drawerBackdrop?.classList.add("open");
+    }
+
+    function closeDrawer() {
+        cyberDrawer?.classList.remove("open");
+        drawerBackdrop?.classList.remove("open");
+    }
+
+    btnToggleDrawer?.addEventListener("click", openDrawer);
+    btnQuickTelemetry?.addEventListener("click", openDrawer);
+    btnCloseDrawer?.addEventListener("click", closeDrawer);
+    drawerBackdrop?.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeDrawer();
+    });
+
+    // Alternar visibilidad del panel del Cerebro Sadigua para lectura a pantalla completa
+    btnToggleBrainStage?.addEventListener("click", () => {
+        if (!neuralCockpit) return;
+        const collapsed = neuralCockpit.classList.toggle("brain-collapsed");
+        btnToggleBrainStage.classList.toggle("active", !collapsed);
+        if (brainStageToggleLabel) {
+            brainStageToggleLabel.textContent = collapsed ? "Mostrar Núcleo" : "Núcleo Activo";
+        }
+    });
+
     // -------------------------------------------------------------
     // NAVEGACIÓN POR PESTAÑAS (TABS)
     // -------------------------------------------------------------
@@ -34,6 +77,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const targetView = document.getElementById(targetTab);
             if (targetView) targetView.classList.add("active");
             state.activeTab = targetTab;
+
+            if (activeViewTitle) {
+                activeViewTitle.textContent = item.dataset.title || item.textContent.trim();
+            }
+            if (btnToggleBrainStage) {
+                btnToggleBrainStage.style.display = targetTab === "tab-chat" ? "" : "none";
+            }
+
+            closeDrawer();
 
             // Recargar datos específicos según la pestaña seleccionada
             if (targetTab === "tab-vault") loadVaultNotes();
@@ -55,10 +107,18 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
             state.systemStatus = data;
 
-            // Actualizar badges del encabezado
-            document.getElementById("header-provider").textContent = 
-                data.provider === "gemini" ? `Gemini (${data.gemini_model})` : `Local (${data.local_model})`;
-            document.getElementById("header-cartridge").textContent = data.active_cartridge;
+            // Actualizar badges de telemetría
+            const headerProvider = document.getElementById("header-provider");
+            if (headerProvider) {
+                headerProvider.textContent =
+                    data.provider === "gemini" ? `Gemini (${data.gemini_model})` : `Local (${data.local_model})`;
+            }
+            const headerCartridge = document.getElementById("header-cartridge");
+            if (headerCartridge) headerCartridge.textContent = data.active_cartridge;
+            const headerRam = document.getElementById("header-ram-val");
+            if (headerRam && data.hardware_info?.ram_gb) {
+                headerRam.textContent = `${data.hardware_info.ram_gb} GB Disponible`;
+            }
 
             // Actualizar Compuerta de Soberanía
             updateSovereigntyUI(data.cloud_egress_enabled);
@@ -89,14 +149,16 @@ document.addEventListener("DOMContentLoaded", () => {
             if (geminiBadge) {
                 if (data.gemini_configured) {
                     geminiBadge.className = "badge badge-green";
+                    geminiBadge.style.background = "";
+                    geminiBadge.style.color = "";
                     geminiBadge.textContent = "✓ Clave de API Configurada en Sistema";
                     if (data.gemini_masked_key && geminiKeyInput) {
                         geminiKeyInput.placeholder = `Clave guardada: ${data.gemini_masked_key}`;
                     }
                 } else {
                     geminiBadge.className = "badge";
-                    geminiBadge.style.background = "#FEF3C7";
-                    geminiBadge.style.color = "#92400E";
+                    geminiBadge.style.background = "var(--warning-bg)";
+                    geminiBadge.style.color = "var(--warning-text)";
                     geminiBadge.textContent = "⚠️ Clave No Configurada";
                     if (geminiKeyInput) {
                         geminiKeyInput.placeholder = "Pega tu clave AIzaSy... aquí";
@@ -113,6 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const badgeSov = document.getElementById("badge-sovereignty");
         const pillSov = document.getElementById("egress-status-pill");
         const chkEgress = document.getElementById("chk-cloud-egress");
+        const miniSovText = document.getElementById("mini-sovereignty-text");
 
         if (chkEgress) chkEgress.checked = Boolean(egressEnabled);
 
@@ -120,6 +183,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (badgeSov) {
                 badgeSov.className = "badge badge-blue";
                 badgeSov.innerHTML = "<span>🌐</span> <strong>Modo Híbrido (Nube Autorizada)</strong>";
+            }
+            if (miniSovText) {
+                miniSovText.textContent = "Modo Híbrido";
             }
             if (pillSov) {
                 pillSov.className = "badge";
@@ -132,8 +198,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 badgeSov.className = "badge badge-green";
                 badgeSov.innerHTML = "<span>🔒</span> <strong>Soberanía: 100% Local</strong>";
             }
+            if (miniSovText) {
+                miniSovText.textContent = "100% Local";
+            }
             if (pillSov) {
                 pillSov.className = "badge badge-green";
+                pillSov.style.background = "";
+                pillSov.style.color = "";
                 pillSov.textContent = "🔒 Salida a Nube Bloqueada";
             }
         }
@@ -152,14 +223,16 @@ document.addEventListener("DOMContentLoaded", () => {
         isComparisonMode = !isComparisonMode;
         if (isComparisonMode) {
             btnToggleComparison.classList.add("active");
-            if (compareToggleLabel) compareToggleLabel.textContent = "⚖️ Modo Comparativo: ACTIVO";
+            if (compareToggleLabel) compareToggleLabel.textContent = "Comparativo 50/50: ACTIVO";
             if (comparisonActiveBanner) comparisonActiveBanner.classList.remove("hidden");
             if (chatContainer) chatContainer.classList.add("comparison-wide");
+            neuralCockpit?.classList.add("comparison-layout");
         } else {
             btnToggleComparison.classList.remove("active");
-            if (compareToggleLabel) compareToggleLabel.textContent = "⚖️ Modo Comparativo: Inactivo";
+            if (compareToggleLabel) compareToggleLabel.textContent = "Comparar vs Gemini";
             if (comparisonActiveBanner) comparisonActiveBanner.classList.add("hidden");
             if (chatContainer) chatContainer.classList.remove("comparison-wide");
+            neuralCockpit?.classList.remove("comparison-layout");
         }
     });
 
@@ -202,6 +275,37 @@ document.addEventListener("DOMContentLoaded", () => {
         return elapsed.toFixed(1);
     }
 
+    let userScrolledMainChat = false;
+    if (chatMessages) {
+        chatMessages.addEventListener("scroll", () => {
+            const atBottom = (chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight) < 60;
+            userScrolledMainChat = !atBottom;
+        }, { passive: true });
+    }
+
+    function clearHudDocuments(statusMessage = "") {
+        if (!hudDocsList) return;
+        if (statusMessage) {
+            hudDocsList.innerHTML = `<span class="doc-pill scanning-pill">🔄 ${escapeHtml(statusMessage)}</span>`;
+        } else {
+            hudDocsList.innerHTML = "";
+        }
+    }
+
+    function renderHudDocuments(documents = [], fallbackText = "") {
+        if (!hudDocsList) return;
+        if (documents && documents.length > 0) {
+            hudDocsList.innerHTML = documents.map(d => {
+                const lbl = d.articulo || d.section || "Norma";
+                return `<span class="doc-pill doc-pill-enter" title="${escapeHtml(d.source || "")}">📄 ${escapeHtml(lbl)}</span>`;
+            }).join("");
+        } else if (fallbackText) {
+            hudDocsList.innerHTML = `<span class="doc-pill doc-pill-enter">${escapeHtml(fallbackText)}</span>`;
+        } else {
+            hudDocsList.innerHTML = "";
+        }
+    }
+
     function resetHUD() {
         if (!chatHud) return;
         chatHud.classList.remove("hidden");
@@ -210,17 +314,45 @@ document.addEventListener("DOMContentLoaded", () => {
         if (hudBadgeCache) hudBadgeCache.classList.add("hidden");
         if (hudBadgeWave1) hudBadgeWave1.className = "wave-pill active";
         if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill pending";
-        if (hudDocsList) hudDocsList.innerHTML = "";
+        clearHudDocuments("Invocando nuevas normas según la consulta actual...");
+    }
+
+    function mapPhaseToVisualizer(phaseName) {
+        const viz = getViz();
+        if (!viz || !phaseName) return;
+        if (phaseName === "tokenization") {
+            viz.activateLayer(1);
+        } else if (phaseName === "precedent_check") {
+            viz.activateLayer(2);
+        } else if (phaseName === "retrieval" || phaseName === "lexical_bm25") {
+            viz.activateLayer(3);
+        } else if (phaseName === "vector_embedding") {
+            viz.activateLayer(4);
+        } else if (phaseName === "rerank" || phaseName === "wave_1_start") {
+            // Permanece en Etapa 5 (Atención / Lectura de Contexto) hasta que llegue la primera palabra real
+            viz.activateLayer(5);
+        } else if (phaseName === "wave_1_done" || phaseName === "wave_2_start") {
+            viz.onWaveTransition();
+        }
     }
 
     async function sendQuery(queryText, skipCacheCheck = false) {
         if (!queryText || state.isQuerying) return;
+        userScrolledMainChat = false;
+
+        // Limpiar de inmediato los artículos en verde de la consulta anterior
+        clearHudDocuments("Descartando artículos previos • Evaluando nueva consulta...");
+
         if (isComparisonMode) {
             return sendComparisonQuery(queryText);
         }
 
+        const viz = getViz();
+
         // Antesala Interactiva: Comprobar si existe un precedente conceptual antes de inferir
         if (!skipCacheCheck) {
+            viz?.activateLayer(1, { immediate: true });
+            viz?.activateLayer(2);
             try {
                 const checkRes = await fetch("/api/chat/check-intent", {
                     method: "POST",
@@ -231,6 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (checkRes && checkRes.found) {
                     appendUserMessage(queryText);
                     chatInput.value = "";
+                    clearHudDocuments("Precedente identificado en Bóveda Obsidiana • Esperando confirmación...");
                     renderIntentClarificationCard(queryText, checkRes);
                     return;
                 }
@@ -248,7 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
         wrapper.className = "msg-wrapper assistant intent-interceptor-card";
         wrapper.id = cardId;
         wrapper.innerHTML = `
-            <div class="msg-avatar assistant" style="background: #2563EB; color: white;">💡</div>
+            <div class="msg-avatar assistant" style="background: rgba(52, 232, 176, 0.16); color: var(--bio-mint); border-color: var(--bio-mint);">💡</div>
             <div class="msg-bubble intent-interceptor-bubble">
                 <div class="intent-interceptor-title">
                     <span>🧠 Precedente Jurídico Identificado en Memoria Obsidiana</span>
@@ -258,7 +391,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     Detectamos una consulta con el <strong>mismo concepto rector</strong> en la Bóveda de Precedentes:
                 </p>
                 <div class="intent-matched-box">
-                    <strong style="color: var(--primary-blue); font-size: 14px;">«${escapeHtml(precedent.matched_query)}»</strong>
+                    <strong style="color: var(--bio-cyan); font-size: 14px;">«${escapeHtml(precedent.matched_query)}»</strong>
                     <p style="margin: 6px 0 0 0; font-size: 12px; color: var(--text-muted); font-style: italic;">
                         ${escapeHtml(precedent.preview || "")}...
                     </p>
@@ -278,6 +411,14 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
         chatMessages.appendChild(wrapper);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        const viz = getViz();
+        viz?.setTargetElement(wrapper.querySelector(".msg-bubble"));
+        viz?.activateLayer(2, {
+            immediate: true,
+            customBadge: "💡 PRECEDENTE DETECTADO EN OBSIDIAN",
+            customCallout: "Coincidencia Conceptual"
+        });
 
         // Listener SÍ -> Cargar precedente instantáneamente
         document.getElementById(`btn-yes-${cardId}`)?.addEventListener("click", async () => {
@@ -313,7 +454,7 @@ document.addEventListener("DOMContentLoaded", () => {
             wrapper.className = "msg-wrapper assistant";
             wrapper.id = currentMsgId;
             wrapper.innerHTML = `
-                <div class="msg-avatar assistant">S</div>
+                <div class="msg-avatar assistant"><img src="/assets/sadigua-icon.png" alt="S"></div>
                 <div class="msg-bubble">
                     <div class="bubble-badges" id="${currentMsgId}-badges">
                         <span class="badge badge-green">⚡ Precedente Verificado en Bóveda (Obsidian)</span>
@@ -323,10 +464,23 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="bubble-content" id="${currentMsgId}-content">
                         ${formatResponseText(data.answer)}
                     </div>
+                    <div class="bubble-sources" id="${currentMsgId}-sources" style="display:none; margin-top: 12px;"></div>
                 </div>
             `;
             chatMessages.appendChild(wrapper);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const sourcesEl = document.getElementById(`${currentMsgId}-sources`);
+            if (data.sources && data.sources.length > 0) {
+                renderSources(sourcesEl, data.sources);
+            }
+            renderHudDocuments(data.sources || [], "⚡ Precedente verificado recuperado desde Bóveda Obsidiana");
+            if (hudPhaseLabel) hudPhaseLabel.textContent = "⚡ Precedente desplegado instantáneamente desde Bóveda.";
+            if (hudProgressFill) hudProgressFill.style.width = "100%";
+
+            const viz = getViz();
+            viz?.setTargetElement(wrapper.querySelector(".msg-bubble"));
+            viz?.completeSession({ cacheHit: true });
         } catch (e) {
             appendErrorMessage("Error recuperando precedente: " + e.message);
         }
@@ -335,6 +489,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function executeStreamingQuery(queryText, skipCache = false) {
         state.isQuerying = true;
         btnSend.disabled = true;
+        userScrolledMainChat = false;
 
         if (!skipCache) {
             appendUserMessage(queryText);
@@ -350,7 +505,7 @@ document.addEventListener("DOMContentLoaded", () => {
         wrapper.className = "msg-wrapper assistant";
         wrapper.id = currentMsgId;
         wrapper.innerHTML = `
-            <div class="msg-avatar assistant">S</div>
+            <div class="msg-avatar assistant"><img src="/assets/sadigua-icon.png" alt="S"></div>
             <div class="msg-bubble">
                 <div class="bubble-badges" id="${currentMsgId}-badges">
                     <span class="badge badge-blue">⚖️ Dictamen en curso...</span>
@@ -364,12 +519,47 @@ document.addEventListener("DOMContentLoaded", () => {
         chatMessages.appendChild(wrapper);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
+        const bubbleEl = wrapper.querySelector(".msg-bubble");
         const contentEl = document.getElementById(`${currentMsgId}-content`);
         const badgesEl = document.getElementById(`${currentMsgId}-badges`);
         const sourcesEl = document.getElementById(`${currentMsgId}-sources`);
 
+        const viz = getViz();
+        viz?.startSession(bubbleEl);
+        viz?.activateLayer(1, { immediate: true });
+
         let accumulatedText = "";
         let isWave2Started = false;
+        let latestWave = 1;
+        let rafRenderId = null;
+
+        // Renderizado agrupado a 60 FPS (requestAnimationFrame):
+        // Si el LLM ya emitió múltiples tokens o terminó un bloque, se pintan TODOS al instante sin cuello de botella DOM.
+        const flushStreamRender = (isFinal = false) => {
+            if (rafRenderId !== null) {
+                cancelAnimationFrame(rafRenderId);
+                rafRenderId = null;
+            }
+            if (contentEl) {
+                contentEl.innerHTML = formatResponseText(accumulatedText) + (isFinal ? "" : '<span class="streaming-cursor"></span>');
+            }
+            if (!userScrolledMainChat && chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        };
+
+        const scheduleStreamRender = () => {
+            if (rafRenderId !== null) return;
+            rafRenderId = requestAnimationFrame(() => {
+                rafRenderId = null;
+                if (contentEl) {
+                    contentEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
+                }
+                if (!userScrolledMainChat && chatMessages) {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            });
+        };
 
         try {
             const res = await fetch("/api/chat/progressive", {
@@ -399,6 +589,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const lines = buffer.split("\n\n");
                 buffer = lines.pop(); // Guardar residuo incompleto
 
+                let receivedTokensInChunk = false;
+
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (!trimmed.startsWith("data:")) continue;
@@ -413,40 +605,46 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (hudProgressFill && event.progress) {
                                 hudProgressFill.style.width = `${event.progress}%`;
                             }
+                            mapPhaseToVisualizer(event.phase);
+
                             if (event.phase === "wave_1_start") {
                                 if (hudBadgeWave1) hudBadgeWave1.className = "wave-pill active";
                             } else if (event.phase === "wave_1_continuation") {
                                 if (hudPhaseLabel) hudPhaseLabel.textContent = "🛡️ Completando cierre de idea en Onda 1...";
                             } else if (event.phase === "wave_1_done") {
+                                flushStreamRender(false);
                                 if (hudBadgeWave1) hudBadgeWave1.className = "wave-pill done";
                                 if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill active";
-                                // Píldora de espera activa para informar al usuario que se está cocinando la Onda 2
+                                // Píldora de espera activa para informar al usuario que se está generando la Onda 2
                                 if (contentEl && !document.getElementById("wave2-cooking-pill")) {
                                     const pill = document.createElement("div");
                                     pill.id = "wave2-cooking-pill";
                                     pill.className = "wave2-cooking-pill";
-                                    pill.innerHTML = `<span class="hud-spinner"></span> <span><strong>Cocinando Onda 2:</strong> Redactando Ruta Procesal, Tutela y Acciones Concretas...</span>`;
+                                    pill.innerHTML = `<span class="hud-spinner"></span> <span><strong>Generando Onda 2:</strong> Redactando Ruta Procesal, Tutela y Acciones Concretas...</span>`;
                                     contentEl.parentElement.appendChild(pill);
-                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                    if (!userScrolledMainChat) chatMessages.scrollTop = chatMessages.scrollHeight;
                                 }
                             } else if (event.phase === "wave_2_start") {
                                 if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill active";
                             } else if (event.phase === "wave_2_continuation") {
                                 if (hudPhaseLabel) hudPhaseLabel.textContent = "🛡️ Completando recomendaciones y cierre final...";
                             } else if (event.phase === "wave_2_done") {
+                                flushStreamRender(false);
                                 if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill done";
                                 const cookingPill = document.getElementById("wave2-cooking-pill");
                                 if (cookingPill) cookingPill.remove();
                             }
                         } else if (event.type === "documents_found") {
-                            if (hudDocsList && event.documents) {
-                                hudDocsList.innerHTML = event.documents.map(d => {
-                                    const lbl = d.articulo || d.section || "Norma";
-                                    return `<span class="doc-pill" title="${escapeHtml(d.source)}">📄 ${escapeHtml(lbl)}</span>`;
-                                }).join("");
-                            }
+                            const newDocs = event.documents || [];
                             if (hudProgressFill && event.progress) {
                                 hudProgressFill.style.width = `${event.progress}%`;
+                            }
+                            const liveViz = getViz();
+                            if (liveViz) {
+                                liveViz.scheduleDocsReveal(() => renderHudDocuments(newDocs, "Sin artículos específicos en corpus"));
+                                liveViz.emitContextBurst(newDocs);
+                            } else {
+                                renderHudDocuments(newDocs, "Sin artículos específicos en corpus");
                             }
                         } else if (event.type === "token") {
                             if (event.wave === 2 && !isWave2Started) {
@@ -456,10 +654,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 accumulatedText += "\n\n---\n\n### Ruta Procesal, Tutela y Acciones Concretas\n\n";
                             }
                             accumulatedText += event.text;
-                            if (contentEl) {
-                                contentEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
-                            }
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                            latestWave = event.wave || 1;
+                            receivedTokensInChunk = true;
                         } else if (event.type === "precedent_hit") {
                             const cookingPill = document.getElementById("wave2-cooking-pill");
                             if (cookingPill) cookingPill.remove();
@@ -477,11 +673,12 @@ document.addEventListener("DOMContentLoaded", () => {
                                 badgesEl.innerHTML = `<span class="badge badge-green">⚡ Precedente Verificado en Bóveda (Obsidian)</span>`;
                             }
                             accumulatedText = event.answer;
-                            if (contentEl) {
-                                contentEl.innerHTML = formatResponseText(accumulatedText);
-                            }
+                            flushStreamRender(true);
+                            renderHudDocuments(event.sources || [], "⚡ Precedente verificado recuperado desde Bóveda Obsidiana");
                             renderSources(sourcesEl, event.sources);
+                            getViz()?.completeSession({ cacheHit: true });
                         } else if (event.type === "grounding") {
+                            getViz()?.activateLayer(7, { immediate: true });
                             if (badgesEl) {
                                 badgesEl.innerHTML = event.grounded
                                     ? `<span class="badge badge-green">✓ Grounding Verificado en Corpus</span>`
@@ -494,9 +691,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             const totalDuration = stopStopwatch();
                             if (hudProgressFill) hudProgressFill.style.width = "100%";
                             if (hudPhaseLabel) hudPhaseLabel.textContent = `✓ Respuesta completada y archivada en Bóveda (${totalDuration}s)`;
-                            if (contentEl) {
-                                contentEl.innerHTML = formatResponseText(accumulatedText);
-                            }
+                            flushStreamRender(true);
+                            getViz()?.completeSession({ cacheHit: false });
                         } else if (event.type === "error") {
                             throw new Error(event.message);
                         }
@@ -504,9 +700,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         console.warn("Línea SSE:", jsonStr, parseErr);
                     }
                 }
+
+                if (receivedTokensInChunk) {
+                    scheduleStreamRender();
+                    getViz()?.onTokenGenerated(accumulatedText, latestWave);
+                }
             }
+            flushStreamRender(true);
         } catch (e) {
+            if (rafRenderId !== null) cancelAnimationFrame(rafRenderId);
             stopStopwatch();
+            getViz()?.handleError();
             if (hudPhaseLabel) hudPhaseLabel.textContent = `❌ Error: ${e.message}`;
             appendErrorMessage(e.message);
         } finally {
@@ -525,6 +729,8 @@ document.addEventListener("DOMContentLoaded", () => {
         chatInput.value = "";
 
         appendUserMessage(queryText);
+        resetHUD();
+        startStopwatch();
 
         const arenaId = Date.now();
         const currentLocalModel = document.getElementById("quick-model-select")?.value || "qwen2.5:7b-instruct";
@@ -539,11 +745,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="arena-header">
                     <div class="arena-title-row">
                         <div class="arena-title">
-                            <div class="arena-avatar local">S</div>
+                            <div class="arena-avatar local"><img src="/assets/sadigua-icon.png" alt="S"></div>
                             <div>
-                                <strong style="color: var(--primary-blue); font-size: 14px;">Modelo Local Soberano</strong>
+                                <strong style="color: var(--bio-mint); font-size: 14px;">Modelo Local Soberano</strong>
                                 <div class="arena-model-name">${escapeHtml(currentLocalModel)} (100% Offline)</div>
                             </div>
+                        </div>
+                        <div class="arena-scroll-actions" title="Controles de scroll independiente para Modelo Local">
+                            <span class="arena-scroll-label">Scroll:</span>
+                            <button type="button" class="arena-scroll-btn" id="scroll-top-local-${arenaId}" title="Ir al inicio de la respuesta local">⬆️ Arriba</button>
+                            <button type="button" class="arena-scroll-btn" id="scroll-bottom-local-${arenaId}" title="Ir al final de la respuesta local">⬇️ Abajo</button>
                         </div>
                     </div>
                     <div class="arena-badges">
@@ -558,7 +769,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="arena-footer" id="local-footer-${arenaId}">
                     <span id="local-status-${arenaId}" style="color: var(--text-secondary);">⏳ Procesando consulta...</span>
-                    <span id="local-tokens-${arenaId}" style="font-family: monospace; font-size: 11px;">0 tokens</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="local-tokens-${arenaId}" style="font-family: monospace; font-size: 11px;">0 tokens</span>
+                        <button type="button" class="arena-footer-scroll-btn" id="footer-scroll-top-local-${arenaId}" title="Subir al inicio">⬆️</button>
+                        <button type="button" class="arena-footer-scroll-btn" id="footer-scroll-bottom-local-${arenaId}" title="Bajar al final">⬇️</button>
+                    </div>
                 </div>
             </div>
 
@@ -569,14 +784,19 @@ document.addEventListener("DOMContentLoaded", () => {
                         <div class="arena-title">
                             <div class="arena-avatar gemini">G</div>
                             <div>
-                                <strong style="color: #6D28D9; font-size: 14px;">Google Gemini Cloud</strong>
+                                <strong style="color: #C084FC; font-size: 14px;">Google Gemini Cloud</strong>
                                 <div class="arena-model-name">${escapeHtml(currentGeminiModel)} (Cloud API)</div>
                             </div>
                         </div>
+                        <div class="arena-scroll-actions" title="Controles de scroll independiente para Gemini Cloud">
+                            <span class="arena-scroll-label">Scroll:</span>
+                            <button type="button" class="arena-scroll-btn" id="scroll-top-gemini-${arenaId}" title="Ir al inicio de la respuesta de Gemini">⬆️ Arriba</button>
+                            <button type="button" class="arena-scroll-btn" id="scroll-bottom-gemini-${arenaId}" title="Ir al final de la respuesta de Gemini">⬇️ Abajo</button>
+                        </div>
                     </div>
                     <div class="arena-badges">
-                        <span class="badge" style="background: #FEF3C7; color: #92400E;">☁️ Nube Pública</span>
-                        <span class="badge" style="background: #FEE2E2; color: #991B1B;">💳 Costo Cloud API</span>
+                        <span class="badge" style="background: var(--warning-bg); color: var(--warning-text); border-color: rgba(250, 204, 21, 0.35);">☁️ Nube Pública</span>
+                        <span class="badge" style="background: var(--danger-bg); color: var(--danger-text); border-color: rgba(248, 113, 113, 0.35);">💳 Costo Cloud API</span>
                         <span class="arena-metric-pill timer" id="gemini-timer-${arenaId}">⏱️ 00:00.0s</span>
                         <span class="arena-metric-pill speed" id="gemini-speed-${arenaId}">⚡ -- tok/s</span>
                     </div>
@@ -586,17 +806,29 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="arena-footer" id="gemini-footer-${arenaId}">
                     <span id="gemini-status-${arenaId}" style="color: var(--text-secondary);">⏳ Esperando primeros tokens...</span>
-                    <span id="gemini-tokens-${arenaId}" style="font-family: monospace; font-size: 11px;">0 tokens</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="gemini-tokens-${arenaId}" style="font-family: monospace; font-size: 11px;">0 tokens</span>
+                        <button type="button" class="arena-footer-scroll-btn" id="footer-scroll-top-gemini-${arenaId}" title="Subir al inicio">⬆️</button>
+                        <button type="button" class="arena-footer-scroll-btn" id="footer-scroll-bottom-gemini-${arenaId}" title="Bajar al final">⬇️</button>
+                    </div>
                 </div>
             </div>
         `;
 
         chatMessages.appendChild(arenaWrapper);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        arenaWrapper.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+        // Enlazar visualizador sináptico a la columna del Modelo Local Soberano
+        const viz = getViz();
+        viz?.startSession(arenaWrapper.querySelector(".arena-col.local"));
+        viz?.activateLayer(1, { immediate: true });
+
+        // Inicializar controles de scroll independientes para ambas ventanas
+        const scrollState = setupArenaScrollControls(arenaId);
 
         // Disparar ambos streams en paralelo
-        const localPromise = runLocalStream(queryText, arenaId);
-        const geminiPromise = runGeminiStream(queryText, arenaId);
+        const localPromise = runLocalStream(queryText, arenaId, scrollState);
+        const geminiPromise = runGeminiStream(queryText, arenaId, scrollState);
 
         const [localRes, geminiRes] = await Promise.allSettled([localPromise, geminiPromise]);
 
@@ -609,10 +841,64 @@ document.addEventListener("DOMContentLoaded", () => {
         state.isQuerying = false;
         btnSend.disabled = false;
         chatInput.focus();
-        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    async function runLocalStream(queryText, arenaId) {
+    function setupArenaScrollControls(arenaId) {
+        const localBody = document.getElementById(`local-body-${arenaId}`);
+        const geminiBody = document.getElementById(`gemini-body-${arenaId}`);
+
+        const scrollState = {
+            userScrolledLocal: false,
+            userScrolledGemini: false
+        };
+
+        const scrollPane = (pane, target) => {
+            if (!pane) return;
+            const topVal = target === "top" ? 0 : pane.scrollHeight;
+            pane.scrollTo({ top: topVal, behavior: "smooth" });
+        };
+
+        // Scroll Local
+        const handleLocalScroll = (target) => {
+            scrollState.userScrolledLocal = (target === "top");
+            scrollPane(localBody, target);
+        };
+
+        document.getElementById(`scroll-top-local-${arenaId}`)?.addEventListener("click", () => handleLocalScroll("top"));
+        document.getElementById(`scroll-bottom-local-${arenaId}`)?.addEventListener("click", () => handleLocalScroll("bottom"));
+        document.getElementById(`footer-scroll-top-local-${arenaId}`)?.addEventListener("click", () => handleLocalScroll("top"));
+        document.getElementById(`footer-scroll-bottom-local-${arenaId}`)?.addEventListener("click", () => handleLocalScroll("bottom"));
+
+        // Scroll Gemini
+        const handleGeminiScroll = (target) => {
+            scrollState.userScrolledGemini = (target === "top");
+            scrollPane(geminiBody, target);
+        };
+
+        document.getElementById(`scroll-top-gemini-${arenaId}`)?.addEventListener("click", () => handleGeminiScroll("top"));
+        document.getElementById(`scroll-bottom-gemini-${arenaId}`)?.addEventListener("click", () => handleGeminiScroll("bottom"));
+        document.getElementById(`footer-scroll-top-gemini-${arenaId}`)?.addEventListener("click", () => handleGeminiScroll("top"));
+        document.getElementById(`footer-scroll-bottom-gemini-${arenaId}`)?.addEventListener("click", () => handleGeminiScroll("bottom"));
+
+        // Detección de scroll manual independiente para cada panel
+        if (localBody) {
+            localBody.addEventListener("scroll", () => {
+                const atBottom = (localBody.scrollHeight - localBody.scrollTop - localBody.clientHeight) < 40;
+                scrollState.userScrolledLocal = !atBottom;
+            }, { passive: true });
+        }
+
+        if (geminiBody) {
+            geminiBody.addEventListener("scroll", () => {
+                const atBottom = (geminiBody.scrollHeight - geminiBody.scrollTop - geminiBody.clientHeight) < 40;
+                scrollState.userScrolledGemini = !atBottom;
+            }, { passive: true });
+        }
+
+        return scrollState;
+    }
+
+    async function runLocalStream(queryText, arenaId, scrollState) {
         const timerEl = document.getElementById(`local-timer-${arenaId}`);
         const speedEl = document.getElementById(`local-speed-${arenaId}`);
         const bodyEl = document.getElementById(`local-body-${arenaId}`);
@@ -623,6 +909,27 @@ document.addEventListener("DOMContentLoaded", () => {
         let tokenCount = 0;
         let accumulatedText = "";
         let isWave2Started = false;
+        let wasCacheHit = false;
+        let latestWave = 1;
+        let rafLocalId = null;
+
+        const scheduleLocalRender = () => {
+            if (rafLocalId !== null) return;
+            rafLocalId = requestAnimationFrame(() => {
+                rafLocalId = null;
+                if (bodyEl && !wasCacheHit) {
+                    bodyEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
+                    if (!scrollState?.userScrolledLocal) {
+                        bodyEl.scrollTop = bodyEl.scrollHeight;
+                    }
+                }
+                const elapsedSec = (Date.now() - startTime) / 1000;
+                if (speedEl && elapsedSec > 0) {
+                    speedEl.textContent = `⚡ ${(tokenCount / elapsedSec).toFixed(1)} tok/s`;
+                }
+                if (tokensEl) tokensEl.textContent = `${tokenCount} tokens`;
+            });
+        };
 
         const interval = setInterval(() => {
             const elapsed = (Date.now() - startTime) / 1000;
@@ -658,6 +965,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const lines = buffer.split("\n\n");
                 buffer = lines.pop();
 
+                let receivedTokens = false;
+
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (!trimmed.startsWith("data:")) continue;
@@ -668,6 +977,20 @@ document.addEventListener("DOMContentLoaded", () => {
                         const event = JSON.parse(jsonStr);
                         if (event.type === "phase") {
                             if (statusEl) statusEl.textContent = event.message;
+                            if (hudPhaseLabel) hudPhaseLabel.textContent = event.message;
+                            if (hudProgressFill && event.progress) {
+                                hudProgressFill.style.width = `${event.progress}%`;
+                            }
+                            mapPhaseToVisualizer(event.phase);
+                        } else if (event.type === "documents_found") {
+                            const newDocs = event.documents || [];
+                            const liveViz = getViz();
+                            if (liveViz) {
+                                liveViz.scheduleDocsReveal(() => renderHudDocuments(newDocs, "Sin artículos específicos en corpus"));
+                                liveViz.emitContextBurst(newDocs);
+                            } else {
+                                renderHudDocuments(newDocs, "Sin artículos específicos en corpus");
+                            }
                         } else if (event.type === "token") {
                             if (event.wave === 2 && !isWave2Started) {
                                 isWave2Started = true;
@@ -675,47 +998,68 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                             tokenCount++;
                             accumulatedText += event.text;
-                            if (bodyEl) {
-                                bodyEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
-                            }
-                            const elapsedSec = (Date.now() - startTime) / 1000;
-                            if (speedEl && elapsedSec > 0) {
-                                speedEl.textContent = `⚡ ${(tokenCount / elapsedSec).toFixed(1)} tok/s`;
-                            }
-                            if (tokensEl) tokensEl.textContent = `${tokenCount} tokens`;
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                            latestWave = event.wave || 1;
+                            receivedTokens = true;
                         } else if (event.type === "precedent_hit") {
+                            wasCacheHit = true;
+                            if (rafLocalId !== null) {
+                                cancelAnimationFrame(rafLocalId);
+                                rafLocalId = null;
+                            }
                             accumulatedText = event.answer;
+                            renderHudDocuments(event.sources || [], "⚡ Precedente verificado recuperado desde Bóveda Obsidiana");
                             if (bodyEl) {
                                 bodyEl.innerHTML = `<div class="badge badge-green" style="margin-bottom: 8px;">⚡ Precedente en Bóveda (${(event.similarity*100).toFixed(0)}%)</div><br>` + formatResponseText(accumulatedText);
+                                if (!scrollState?.userScrolledLocal) {
+                                    bodyEl.scrollTop = bodyEl.scrollHeight;
+                                }
                             }
+                        } else if (event.type === "grounding") {
+                            getViz()?.activateLayer(7, { immediate: true });
                         } else if (event.type === "done") {
                             // Listo
                         }
                     } catch (e) {}
                 }
+
+                if (receivedTokens) {
+                    scheduleLocalRender();
+                    getViz()?.onTokenGenerated(accumulatedText, latestWave);
+                }
             }
 
+            if (rafLocalId !== null) cancelAnimationFrame(rafLocalId);
             clearInterval(interval);
+            stopStopwatch();
             const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-            if (bodyEl) {
+            if (hudProgressFill) hudProgressFill.style.width = "100%";
+            if (hudPhaseLabel) hudPhaseLabel.textContent = `✓ Modelo Local completado (${totalElapsed}s)`;
+            getViz()?.completeSession({ cacheHit: wasCacheHit });
+
+            if (bodyEl && !wasCacheHit) {
                 bodyEl.innerHTML = formatResponseText(accumulatedText);
+                if (!scrollState?.userScrolledLocal) {
+                    bodyEl.scrollTop = bodyEl.scrollHeight;
+                }
             }
             const tokSec = totalElapsed > 0 ? (tokenCount / totalElapsed).toFixed(1) : 0;
             if (statusEl) statusEl.textContent = `✓ Concluido en ${totalElapsed}s | 100% Soberano`;
             return { time: parseFloat(totalElapsed), tokens: tokenCount, speed: parseFloat(tokSec) };
 
         } catch (err) {
+            if (rafLocalId !== null) cancelAnimationFrame(rafLocalId);
             clearInterval(interval);
+            stopStopwatch();
+            getViz()?.handleError();
             if (bodyEl) {
-                bodyEl.innerHTML = `<div style="color: #DC2626; padding: 12px; background: #FEF2F2; border-radius: 6px;"><strong>Error Local:</strong> ${escapeHtml(err.message)}</div>`;
+                bodyEl.innerHTML = `<div style="color: var(--danger-text); padding: 12px; background: var(--danger-bg); border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 8px;"><strong>Error Local:</strong> ${escapeHtml(err.message)}</div>`;
             }
             if (statusEl) statusEl.textContent = "❌ Error en inferencia local";
             return { error: true, message: err.message };
         }
     }
 
-    async function runGeminiStream(queryText, arenaId) {
+    async function runGeminiStream(queryText, arenaId, scrollState) {
         const timerEl = document.getElementById(`gemini-timer-${arenaId}`);
         const speedEl = document.getElementById(`gemini-speed-${arenaId}`);
         const bodyEl = document.getElementById(`gemini-body-${arenaId}`);
@@ -725,6 +1069,25 @@ document.addEventListener("DOMContentLoaded", () => {
         const startTime = Date.now();
         let tokenCount = 0;
         let accumulatedText = "";
+        let rafGeminiId = null;
+
+        const scheduleGeminiRender = () => {
+            if (rafGeminiId !== null) return;
+            rafGeminiId = requestAnimationFrame(() => {
+                rafGeminiId = null;
+                if (bodyEl) {
+                    bodyEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
+                    if (!scrollState?.userScrolledGemini) {
+                        bodyEl.scrollTop = bodyEl.scrollHeight;
+                    }
+                }
+                const elapsedSec = (Date.now() - startTime) / 1000;
+                if (speedEl && elapsedSec > 0) {
+                    speedEl.textContent = `⚡ ${(tokenCount / elapsedSec).toFixed(1)} tok/s`;
+                }
+                if (tokensEl) tokensEl.textContent = `${tokenCount} tokens`;
+            });
+        };
 
         const interval = setInterval(() => {
             const elapsed = (Date.now() - startTime) / 1000;
@@ -760,6 +1123,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const lines = buffer.split("\n\n");
                 buffer = lines.pop();
 
+                let receivedGeminiTokens = false;
+
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (!trimmed.startsWith("data:")) continue;
@@ -773,24 +1138,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         } else if (event.type === "token") {
                             tokenCount++;
                             accumulatedText += event.text;
-                            if (bodyEl) {
-                                bodyEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
-                            }
-                            const elapsedSec = (Date.now() - startTime) / 1000;
-                            if (speedEl && elapsedSec > 0) {
-                                speedEl.textContent = `⚡ ${(tokenCount / elapsedSec).toFixed(1)} tok/s`;
-                            }
-                            if (tokensEl) tokensEl.textContent = `${tokenCount} tokens`;
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                            receivedGeminiTokens = true;
                         } else if (event.type === "error") {
+                            if (rafGeminiId !== null) cancelAnimationFrame(rafGeminiId);
                             clearInterval(interval);
                             if (bodyEl) {
                                 bodyEl.innerHTML = `
-                                    <div style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 14px; color: #991B1B;">
+                                    <div style="background: var(--danger-bg); border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 8px; padding: 14px; color: var(--danger-text);">
                                         <strong>⚠️ Configuración de Gemini Requerida:</strong>
-                                        <p style="margin: 6px 0 10px 0; font-size: 13px;">${escapeHtml(event.message)}</p>
+                                        <p style="margin: 6px 0 10px 0; font-size: 13px; color: var(--text-primary);">${escapeHtml(event.message)}</p>
                                         <button type="button" class="btn-primary" style="font-size: 12px; padding: 5px 12px;" onclick="document.querySelector('[data-tab=tab-settings]').click();">
-                                            ⚙️ Ir a Configuración MLOps para cargar API Key
+                                             ⚙️ Ir a Configuración MLOps para cargar API Key
                                         </button>
                                     </div>
                                 `;
@@ -802,21 +1160,30 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     } catch (e) {}
                 }
+
+                if (receivedGeminiTokens) {
+                    scheduleGeminiRender();
+                }
             }
 
+            if (rafGeminiId !== null) cancelAnimationFrame(rafGeminiId);
             clearInterval(interval);
             const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
             if (bodyEl) {
                 bodyEl.innerHTML = formatResponseText(accumulatedText);
+                if (!scrollState?.userScrolledGemini) {
+                    bodyEl.scrollTop = bodyEl.scrollHeight;
+                }
             }
             const tokSec = totalElapsed > 0 ? (tokenCount / totalElapsed).toFixed(1) : 0;
             if (statusEl) statusEl.textContent = `✓ Concluido en ${totalElapsed}s | Cloud Híbrido`;
             return { time: parseFloat(totalElapsed), tokens: tokenCount, speed: parseFloat(tokSec) };
 
         } catch (err) {
+            if (rafGeminiId !== null) cancelAnimationFrame(rafGeminiId);
             clearInterval(interval);
             if (bodyEl) {
-                bodyEl.innerHTML = `<div style="color: #DC2626; padding: 12px; background: #FEF2F2; border-radius: 6px;"><strong>Error Gemini Cloud:</strong> ${escapeHtml(err.message)}</div>`;
+                bodyEl.innerHTML = `<div style="color: var(--danger-text); padding: 12px; background: var(--danger-bg); border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 8px;"><strong>Error Gemini Cloud:</strong> ${escapeHtml(err.message)}</div>`;
             }
             if (statusEl) statusEl.textContent = "❌ Error en conexión Cloud";
             return { error: true, message: err.message };
@@ -846,26 +1213,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     <tr>
                         <td><strong>Soberanía & Reserva Legal</strong></td>
                         <td><span class="badge badge-green">🔒 100% On-Premise</span> (Cumple Ley 1581 & Conpes 4144)</td>
-                        <td><span class="badge" style="background: #FEF3C7; color: #92400E;">☁️ Nube Pública</span> (Transferencia fuera del host)</td>
-                        <td><strong>Local Gana</strong></td>
+                        <td><span class="badge" style="background: var(--warning-bg); color: var(--warning-text); border-color: rgba(250, 204, 21, 0.35);">☁️ Nube Pública</span> (Transferencia fuera del host)</td>
+                        <td><strong style="color: var(--bio-mint);">Local Gana</strong></td>
                     </tr>
                     <tr>
                         <td><strong>Costo Operativo</strong></td>
-                        <td><strong>$0.00 COP</strong> (Inferencia ilimitada en hardware propio)</td>
+                        <td><strong style="color: var(--bio-mint);">$0.00 COP</strong> (Inferencia ilimitada en hardware propio)</td>
                         <td>Tarifa por millón de tokens en USD + Facturación mensual</td>
-                        <td><strong>Local Gana</strong></td>
+                        <td><strong style="color: var(--bio-mint);">Local Gana</strong></td>
                     </tr>
                     <tr>
                         <td><strong>Rendimiento & Latencia</strong></td>
                         <td>${localTimeStr} en CPU AVX2</td>
                         <td>${geminiTimeStr} en Google Cloud TPU</td>
-                        <td><strong>${geminiData.error ? 'Local Activo' : 'Gemini +rápido'}</strong></td>
+                        <td><strong style="color: var(--bio-cyan);">${geminiData.error ? 'Local Activo' : 'Gemini +rápido'}</strong></td>
                     </tr>
                     <tr>
                         <td><strong>Garantía de Continuidad</strong></td>
                         <td><span class="badge badge-green">✓ Opera sin Internet</span> (Air-Gapped)</td>
-                        <td><span class="badge" style="background: #FEF3C7; color: #92400E;">⚠️ Depende de Conectividad</span></td>
-                        <td><strong>Local Gana</strong></td>
+                        <td><span class="badge" style="background: var(--warning-bg); color: var(--warning-text); border-color: rgba(250, 204, 21, 0.35);">⚠️ Depende de Conectividad</span></td>
+                        <td><strong style="color: var(--bio-mint);">Local Gana</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -908,7 +1275,7 @@ document.addEventListener("DOMContentLoaded", () => {
         wrapper.className = "msg-wrapper assistant";
         wrapper.innerHTML = `
             <div class="msg-avatar assistant">!</div>
-            <div class="msg-bubble" style="border-color: #FCA5A5; background: var(--danger-bg); color: var(--danger-text);">
+            <div class="msg-bubble" style="border-color: rgba(248, 113, 113, 0.45); background: var(--danger-bg); color: var(--danger-text);">
                 <strong>Error en la consulta:</strong> ${escapeHtml(errorText)}
             </div>
         `;
@@ -1355,7 +1722,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Selector rápido de modelo en la barra del chat
+    // Selector rápido de modelo en la barra superior compacta
     document.getElementById("quick-model-select")?.addEventListener("change", async (e) => {
         const newModel = e.target.value;
         const cfgLocal = document.getElementById("cfg-local-model");
@@ -1378,13 +1745,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (indicator) {
                     const originalText = indicator.textContent;
                     indicator.textContent = `✓ Modelo conmutado a ${newModel}`;
-                    indicator.style.background = "#DBEAFE";
-                    indicator.style.color = "#1D4ED8";
+                    indicator.style.background = "var(--bio-cyan-dim)";
+                    indicator.style.color = "var(--bio-cyan)";
                     setTimeout(() => {
                         indicator.textContent = originalText;
                         indicator.style.background = "";
                         indicator.style.color = "";
                     }, 3500);
+                }
+                if (hudPhaseLabel) {
+                    hudPhaseLabel.textContent = `⚡ Motor local conmutado a ${newModel}`;
                 }
             }
         } catch (err) {
@@ -1397,20 +1767,23 @@ document.addEventListener("DOMContentLoaded", () => {
     // -------------------------------------------------------------
     function escapeHtml(text) {
         if (!text) return "";
-        const div = document.createElement("div");
-        div.textContent = text;
-        return div.innerHTML;
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
     }
 
     function formatResponseText(text) {
         if (!text) return "";
         let formatted = escapeHtml(text);
         // Títulos H4 (#### ...)
-        formatted = formatted.replace(/^#### (.*?)$/gm, '<h5 style="color: var(--primary-blue); margin: 12px 0 4px 0; font-size: 14px; font-weight: 700;">$1</h5>');
+        formatted = formatted.replace(/^#### (.*?)$/gm, '<h5 style="color: var(--bio-mint); margin: 12px 0 4px 0; font-size: 14px; font-weight: 700;">$1</h5>');
         // Títulos H3 (### ...)
-        formatted = formatted.replace(/^### (.*?)$/gm, '<h4 style="color: var(--primary-blue); margin: 16px 0 8px 0; font-size: 15.5px; font-weight: 700; border-bottom: 1px solid #DBEAFE; padding-bottom: 4px;">$1</h4>');
+        formatted = formatted.replace(/^### (.*?)$/gm, '<h4 style="color: var(--bio-cyan); margin: 16px 0 8px 0; font-size: 15.5px; font-weight: 700; border-bottom: 1px solid rgba(0, 229, 255, 0.22); padding-bottom: 4px;">$1</h4>');
         // Separador horizontal (---)
-        formatted = formatted.replace(/^---$/gm, '<hr style="border: none; border-top: 1px dashed #CBD5E1; margin: 14px 0;">');
+        formatted = formatted.replace(/^---$/gm, '<hr style="border: none; border-top: 1px dashed rgba(56, 189, 248, 0.28); margin: 14px 0;">');
         // Negritas (**texto**)
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         // Cursivas (*texto*)
