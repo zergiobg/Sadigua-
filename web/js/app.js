@@ -46,7 +46,11 @@ document.addEventListener("DOMContentLoaded", () => {
     btnCloseDrawer?.addEventListener("click", closeDrawer);
     drawerBackdrop?.addEventListener("click", closeDrawer);
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeDrawer();
+        if (e.key === "Escape") {
+            closeDrawer();
+            document.getElementById("note-modal")?.classList.remove("active");
+            if (typeof closeMutationModal === "function") closeMutationModal();
+        }
     });
 
     // Alternar visibilidad del panel del Cerebro Sadigua para lectura a pantalla completa
@@ -93,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 loadCartridges();
                 loadDocuments();
                 loadIndexData();
+                loadMutationsTable();
             }
         });
     });
@@ -646,6 +651,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             } else {
                                 renderHudDocuments(newDocs, "Sin artículos específicos en corpus");
                             }
+                        } else if (event.type === "mutations_detected") {
+                            const mutations = event.mutations || [];
+                            renderMutationBannersInChat(contentEl, mutations);
                         } else if (event.type === "token") {
                             if (event.wave === 2 && !isWave2Started) {
                                 isWave2Started = true;
@@ -679,10 +687,16 @@ document.addEventListener("DOMContentLoaded", () => {
                             getViz()?.completeSession({ cacheHit: true });
                         } else if (event.type === "grounding") {
                             getViz()?.activateLayer(7, { immediate: true });
+                            if (event.mutations_detected && event.mutations_detected.length) {
+                                renderMutationBannersInChat(bodyEl, event.mutations_detected);
+                            }
                             if (badgesEl) {
                                 badgesEl.innerHTML = event.grounded
                                     ? `<span class="badge badge-green">✓ Grounding Verificado en Corpus</span>`
                                     : `<span class="badge" style="background: var(--warning-bg); color: var(--warning-text);">⚠️ ${escapeHtml(event.grounding_status)}</span>`;
+                            }
+                            if (event.mutations_detected && event.mutations_detected.length) {
+                                renderMutationBannersInChat(contentEl, event.mutations_detected);
                             }
                             renderSources(sourcesEl, event.sources);
                         } else if (event.type === "done") {
@@ -991,6 +1005,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             } else {
                                 renderHudDocuments(newDocs, "Sin artículos específicos en corpus");
                             }
+                        } else if (event.type === "mutations_detected") {
+                            const mutations = event.mutations || [];
+                            renderMutationBannersInChat(bodyEl, mutations);
                         } else if (event.type === "token") {
                             if (event.wave === 2 && !isWave2Started) {
                                 isWave2Started = true;
@@ -1016,6 +1033,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                         } else if (event.type === "grounding") {
                             getViz()?.activateLayer(7, { immediate: true });
+                            if (event.mutations_detected && event.mutations_detected.length) {
+                                renderMutationBannersInChat(bodyEl, event.mutations_detected);
+                            }
                         } else if (event.type === "done") {
                             // Listo
                         }
@@ -1611,6 +1631,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const formData = new FormData();
         formData.append("file", file);
 
+        const curatorInput = document.getElementById("curator-instruction-input");
+        if (curatorInput && curatorInput.value.trim()) {
+            formData.append("curator_instruction", curatorInput.value.trim());
+        }
+
         dropArea.style.opacity = "0.5";
         try {
             const res = await fetch("/api/documents/upload", {
@@ -1618,8 +1643,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: formData
             });
             if (res.ok) {
-                alert(`Archivo '${file.name}' cargado con éxito. Ahora presiona 'Re-indexar RAG Híbrido'.`);
+                const data = await res.json();
+                if (data.mutation_registered && data.mutation) {
+                    alert(`¡Documento cargado y Mutación de Precedente registrada en SQLite!\n\n• Norma Afectada: ${data.mutation.target_norm}\n• Tipo de Mutación: ${data.mutation.mutation_type}\n• Nueva Regla: ${data.mutation.regla_nueva.slice(0, 120)}...\n\nSe ha actualizado automáticamente la Bóveda de Obsidian y el índice RAG.`);
+                    if (curatorInput) curatorInput.value = "";
+                } else {
+                    alert(`Archivo '${file.name}' cargado con éxito. Ahora presiona 'Re-indexar RAG Híbrido'.`);
+                }
                 loadDocuments();
+                loadMutationsTable();
+                loadVaultNotes();
             } else {
                 alert("Error al cargar el archivo.");
             }
@@ -1640,6 +1673,7 @@ document.addEventListener("DOMContentLoaded", () => {
             alert(`Re-indexación completa: ${data.total_chunks} fragmentos indexados.`);
             loadSystemStatus();
             loadIndexData();
+            loadMutationsTable();
         } catch (e) {
             alert("Error re-indexando: " + e.message);
         } finally {
@@ -1647,6 +1681,129 @@ document.addEventListener("DOMContentLoaded", () => {
             btnReindex.textContent = "🔄 Re-indexar RAG Híbrido";
         }
     });
+
+    // -------------------------------------------------------------
+    // 4.1. TRAZABILIDAD DOGMÁTICA & MUTACIÓN DE PRECEDENTES (SQLITE)
+    // -------------------------------------------------------------
+    const mutationModal = document.getElementById("mutation-modal");
+    const mutationModalClose = document.getElementById("mutation-modal-close");
+    const btnCloseMutationModal = document.getElementById("btn-close-mutation-modal");
+    const btnRefreshMutations = document.getElementById("btn-refresh-mutations");
+
+    function renderMutationBannersInChat(targetEl, mutations) {
+        if (!targetEl || !mutations || !mutations.length) return;
+        const parent = targetEl.parentElement;
+        if (!parent) return;
+
+        let container = parent.querySelector(".mutation-banners-wrapper");
+        if (!container) {
+            container = document.createElement("div");
+            container.className = "mutation-banners-wrapper";
+            parent.insertBefore(container, targetEl);
+        }
+        container.innerHTML = "";
+        mutations.forEach(m => {
+            const banner = document.createElement("div");
+            banner.className = "mutation-alert-banner";
+            banner.innerHTML = `
+                <div class="banner-icon">🏛️</div>
+                <div class="banner-text">
+                    <strong>Aviso de Vigencia (${escapeHtml(m.mutation_type)}):</strong> El precedente <em>${escapeHtml(m.target_norm)}</em> fue modificado/superado por <em>${escapeHtml(m.source_doc)}</em> (${escapeHtml(m.autoridad)}).
+                </div>
+                <button type="button" class="banner-btn">Ver Trazabilidad (¿Qué había antes vs. ahora?) ➔</button>
+            `;
+            banner.addEventListener("click", (evt) => {
+                evt.stopPropagation();
+                openMutationModal(m);
+            });
+            container.appendChild(banner);
+        });
+    }
+
+    function openMutationModal(m) {
+        if (!mutationModal || !m) return;
+        const titleEl = document.getElementById("mutation-modal-title");
+        const subtitleEl = document.getElementById("mutation-modal-subtitle");
+        const badgesEl = document.getElementById("mutation-modal-badges");
+        const reglaAnteriorEl = document.getElementById("modal-regla-anterior");
+        const reglaNuevaEl = document.getElementById("modal-regla-nueva");
+        const efectosEl = document.getElementById("modal-efectos-info");
+
+        if (titleEl) titleEl.textContent = `Trazabilidad Dogmática: ${m.target_norm}`;
+        if (subtitleEl) subtitleEl.textContent = `Modificado por ${m.source_doc} • Autoridad: ${m.autoridad}`;
+
+        if (badgesEl) {
+            badgesEl.innerHTML = `
+                <span class="badge" style="background: rgba(0, 229, 255, 0.15); color: var(--bio-cyan); font-weight: 600;">⚖️ ${escapeHtml(m.mutation_type)}</span>
+                <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38BDF8;">📅 Fecha: ${escapeHtml(m.fecha_mutacion || 'Reciente')}</span>
+                <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #C084FC;">🏛️ ${escapeHtml(m.autoridad)}</span>
+                <span class="badge" style="background: rgba(52, 232, 176, 0.15); color: var(--bio-mint);">📁 Origen: ${escapeHtml(m.source_doc)}</span>
+            `;
+        }
+
+        if (reglaAnteriorEl) {
+            reglaAnteriorEl.innerHTML = formatResponseText(m.regla_anterior || "Sin registro detallado del criterio anterior.");
+        }
+        if (reglaNuevaEl) {
+            reglaNuevaEl.innerHTML = formatResponseText(m.regla_nueva || "Sin registro detallado del nuevo criterio vinculante.");
+        }
+        if (efectosEl) {
+            let noteHtml = m.curator_notes ? `<br><strong>Instrucción / Notas del Curador:</strong> <em>«${escapeHtml(m.curator_notes)}»</em>` : "";
+            efectosEl.innerHTML = `<strong>Efectos:</strong> ${escapeHtml(m.efectos || 'Hacia el futuro (Ex nunc)')} ${noteHtml}`;
+        }
+
+        mutationModal.classList.add("active");
+        mutationModal.style.display = "flex";
+    }
+
+    function closeMutationModal() {
+        if (!mutationModal) return;
+        mutationModal.classList.remove("active");
+        mutationModal.style.display = "none";
+    }
+
+    mutationModalClose?.addEventListener("click", closeMutationModal);
+    btnCloseMutationModal?.addEventListener("click", closeMutationModal);
+    mutationModal?.addEventListener("click", (e) => {
+        if (e.target === mutationModal) closeMutationModal();
+    });
+
+    async function loadMutationsTable() {
+        const tbody = document.getElementById("mutations-tbody");
+        if (!tbody) return;
+
+        try {
+            const res = await fetch("/api/jurisprudencia/mutations");
+            if (!res.ok) return;
+            const mutations = await res.json();
+            tbody.innerHTML = "";
+
+            if (!mutations || !mutations.length) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">No hay mutaciones de precedente o derogatorias registradas aún en SQLite. Puedes subir una sentencia con una instrucción de curaduría para registrar una nueva.</td></tr>`;
+                return;
+            }
+
+            mutations.forEach(m => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${escapeHtml(m.target_norm)}</strong></td>
+                    <td style="color: var(--bio-cyan); font-weight: 500;">${escapeHtml(m.source_doc)}</td>
+                    <td><span class="badge" style="background: rgba(0, 229, 255, 0.15); color: var(--bio-cyan);">${escapeHtml(m.mutation_type)}</span></td>
+                    <td style="color: #FDE047; font-size: 12.5px;">${escapeHtml((m.regla_anterior || '').slice(0, 95))}${m.regla_anterior && m.regla_anterior.length > 95 ? '...' : ''}</td>
+                    <td style="color: var(--bio-mint); font-size: 12.5px;">${escapeHtml((m.regla_nueva || '').slice(0, 95))}${m.regla_nueva && m.regla_nueva.length > 95 ? '...' : ''}</td>
+                    <td style="text-align: center;">
+                        <button type="button" class="btn-view-mutation" title="Ver ficha comparativa completa">Ver Ficha ➔</button>
+                    </td>
+                `;
+                tr.querySelector(".btn-view-mutation").addEventListener("click", () => openMutationModal(m));
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error("Error cargando tabla de mutaciones:", e);
+        }
+    }
+
+    btnRefreshMutations?.addEventListener("click", loadMutationsTable);
 
     // -------------------------------------------------------------
     // 5. GUARDAR AJUSTES MLOPS & CREDENCIALES GEMINI
@@ -1799,4 +1956,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Inicializar
     loadSystemStatus();
+    loadMutationsTable();
 });

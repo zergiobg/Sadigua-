@@ -22,6 +22,7 @@ from core.rag.ingest import IngestionPipeline
 from core.memory.vault_manager import ObsidianVaultManager
 from core.agents.orchestrator import SadiguaOrchestrator
 from core.cartridges.manager import CartridgeManager
+from core.rag.mutation_engine import LexMutationEngine
 from gateway.anonymizer import PIIAnonymizer
 
 app = FastAPI(
@@ -82,6 +83,17 @@ class CheckIntentRequest(BaseModel):
 class PrecedentAnswerRequest(BaseModel):
     note_id: str
     query: str
+
+class RecordMutationRequest(BaseModel):
+    source_doc: str
+    target_norm: str
+    mutation_type: str = "OVERRULING"
+    regla_anterior: str
+    regla_nueva: str
+    autoridad: str = "Corte Constitucional / Consejo de Estado"
+    fecha_mutacion: Optional[str] = None
+    efectos: str = "Hacia el futuro (Ex nunc)"
+    curator_notes: str = ""
 
 class SwitchCartridgeRequest(BaseModel):
     cartridge_id: str = Field(..., description="ID del cartucho a activar")
@@ -527,7 +539,8 @@ async def get_indexed_chunks(search: Optional[str] = None, source: Optional[str]
 @app.post("/api/documents/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    subfolder: str = Form("02_codigos")
+    subfolder: str = Form("02_codigos"),
+    curator_instruction: Optional[str] = Form(None)
 ):
     cartridge_corpus = settings.CARTRIDGES_PATH / settings.ACTIVE_CARTRIDGE / "corpus" / subfolder
     cartridge_corpus.mkdir(parents=True, exist_ok=True)
@@ -536,9 +549,23 @@ async def upload_document(
     with dest_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    mutation_info = None
+    if curator_instruction and curator_instruction.strip():
+        pipeline = IngestionPipeline(
+            cartridge_name=settings.ACTIVE_CARTRIDGE,
+            vector_store=vector_store,
+            bm25_index=bm25_index
+        )
+        await pipeline.ingest_corpus(curator_instruction=curator_instruction.strip(), current_file=file.filename)
+        mutations = LexMutationEngine().list_mutations(limit=1)
+        if mutations:
+            mutation_info = mutations[0]
+
     return {
         "message": f"Archivo '{file.filename}' subido con éxito al cartucho '{settings.ACTIVE_CARTRIDGE}'",
-        "path": str(dest_path)
+        "path": str(dest_path),
+        "mutation_registered": mutation_info is not None,
+        "mutation": mutation_info
     }
 
 @app.post("/api/ingest")
@@ -550,6 +577,34 @@ async def trigger_ingestion():
     )
     count = await pipeline.ingest_corpus()
     return {"message": "Re-indexación finalizada con éxito", "total_chunks": count}
+
+# -------------------------------------------------------------
+# ENDPOINTS DE TRAZABILIDAD Y MUTACIÓN DE PRECEDENTES (SQLITE)
+# -------------------------------------------------------------
+@app.get("/api/jurisprudencia/mutations")
+def get_jurisprudencia_mutations(limit: int = 50, q: Optional[str] = None):
+    """Retorna las mutaciones normativas registradas en SQLite y sincronizadas con Obsidian."""
+    engine = LexMutationEngine()
+    if q:
+        return engine.find_mutations_for_norm(q)
+    return engine.list_mutations(limit=limit)
+
+@app.post("/api/jurisprudencia/record-mutation")
+def record_jurisprudencia_mutation(req: RecordMutationRequest):
+    """Permite registrar manualmente una mutación de precedente o derogatoria formal."""
+    engine = LexMutationEngine()
+    mut_id = engine.record_mutation(
+        source_doc=req.source_doc,
+        target_norm=req.target_norm,
+        mutation_type=req.mutation_type,
+        regla_anterior=req.regla_anterior,
+        regla_nueva=req.regla_nueva,
+        autoridad=req.autoridad,
+        fecha_mutacion=req.fecha_mutacion,
+        efectos=req.efectos,
+        curator_notes=req.curator_notes
+    )
+    return {"status": "success", "mutation_id": mut_id}
 
 # -------------------------------------------------------------
 # ENDPOINTS DE MEMORIA 'CEREBRO OBSIDIANO' (VAULT)

@@ -10,6 +10,7 @@ from core.memory.vault_manager import ObsidianVaultManager
 from core.memory.conversation_buffer import ConversationBuffer
 from core.memory.semantic_cache import SemanticPrecedentCache
 from core.agents.grounding_check import GroundingValidator
+from core.rag.mutation_engine import LexMutationEngine
 
 class SadiguaOrchestrator:
     """
@@ -35,7 +36,33 @@ class SadiguaOrchestrator:
         self.vault = vault_manager or ObsidianVaultManager()
         self.memory = ConversationBuffer()
         self.semantic_cache = SemanticPrecedentCache(vault_manager=self.vault)
+        self.mutation_engine = LexMutationEngine()
         self.system_prompt = self._load_system_prompt()
+
+    def _find_mutations_for_context(self, user_query: str, retrieved_docs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Identifica si los documentos recuperados o la consulta tienen mutaciones normativas registradas en SQLite."""
+        mutations = []
+        seen_ids = set()
+
+        # 1. Por metadatos de los documentos recuperados
+        for doc in retrieved_docs:
+            for field in ["articulo", "section", "source"]:
+                val = doc.get(field)
+                if val and len(str(val).strip()) >= 3:
+                    found = self.mutation_engine.find_mutations_for_norm(str(val).strip())
+                    for m in found:
+                        if m["id"] not in seen_ids:
+                            seen_ids.add(m["id"])
+                            mutations.append(m)
+
+        # 2. Por términos léxicos relevantes de la consulta
+        query_mutations = self.mutation_engine.find_mutations_for_norm(user_query)
+        for m in query_mutations:
+            if m["id"] not in seen_ids:
+                seen_ids.add(m["id"])
+                mutations.append(m)
+
+        return mutations
 
     def _load_system_prompt(self) -> str:
         prompt_file = self.cartridge_path / "system_prompt.txt"
@@ -101,8 +128,24 @@ class SadiguaOrchestrator:
             candidates = await self.retriever.retrieve(user_query, top_k=15)
             retrieved_docs = self.reranker.rerank(user_query, candidates, top_n=3)
 
+        # Identificar mutaciones normativas y cambios de precedente en SQLite
+        mutations_detected = self._find_mutations_for_context(user_query, retrieved_docs)
+
         # 3. Construcción del Prompt Enriquecido con Evidencias
         context_blocks = []
+        if mutations_detected:
+            mut_warnings = ["[ALERTA DOGMÁTICA DE VIGENCIA Y MUTACIÓN DE PRECEDENTE:]"]
+            for m in mutations_detected:
+                mut_warnings.append(
+                    f"• Precedente / Norma: {m['target_norm']}\n"
+                    f"  - Tipo de Mutación: {m['mutation_type']} por {m['source_doc']} ({m['autoridad']})\n"
+                    f"  - Criterio Anterior Superado (¿Qué había antes?): {m['regla_anterior']}\n"
+                    f"  - Criterio Vigente Obligatorio (¿Qué hay ahora?): {m['regla_nueva']}\n"
+                    f"  - Efectos Temporales: {m['efectos']}"
+                )
+            mut_warnings.append("ADVERTENCIA PARA EL DICTAMEN: Aplica obligatoriamente el criterio nuevo y vigente. Si mencionas el criterio anterior, indícalo expresamente como SUPERADO/DEROGADO.")
+            context_blocks.append("\n".join(mut_warnings))
+
         for idx, doc in enumerate(retrieved_docs, start=1):
             source_label = doc.get("source", "Norma")
             section_label = doc.get("section", "")
@@ -182,7 +225,8 @@ class SadiguaOrchestrator:
             "sources": sources_meta,
             "citations_found": citations,
             "precedent_hit": False,
-            "note_id": note_path.stem
+            "note_id": note_path.stem,
+            "mutations_detected": mutations_detected
         }
 
     async def answer_progressive_stream(self, user_query: str, skip_cache: bool = False) -> AsyncGenerator[Dict[str, Any], None]:
@@ -287,8 +331,31 @@ class SadiguaOrchestrator:
             "progress": 50
         }
 
+        # Identificar si hay mutaciones normativas o precedentes superados
+        mutations_detected = self._find_mutations_for_context(user_query, retrieved_docs)
+        if mutations_detected:
+            yield {
+                "type": "mutations_detected",
+                "mutations": mutations_detected,
+                "count": len(mutations_detected),
+                "message": f"Identificado(s) {len(mutations_detected)} cambio(s) de jurisprudencia o vigencia normativa en la base de datos."
+            }
+
         # Construir contexto
         context_blocks = []
+        if mutations_detected:
+            mut_warnings = ["[ALERTA DOGMÁTICA DE VIGENCIA Y MUTACIÓN DE PRECEDENTE:]"]
+            for m in mutations_detected:
+                mut_warnings.append(
+                    f"• Precedente / Norma: {m['target_norm']}\n"
+                    f"  - Tipo de Mutación: {m['mutation_type']} por {m['source_doc']} ({m['autoridad']})\n"
+                    f"  - Criterio Anterior Superado (¿Qué había antes?): {m['regla_anterior']}\n"
+                    f"  - Criterio Vigente Obligatorio (¿Qué hay ahora?): {m['regla_nueva']}\n"
+                    f"  - Efectos Temporales: {m['efectos']}"
+                )
+            mut_warnings.append("ADVERTENCIA PARA EL DICTAMEN: Aplica obligatoriamente el criterio nuevo y vigente. Si mencionas el criterio anterior, indícalo expresamente como SUPERADO/DEROGADO.")
+            context_blocks.append("\n".join(mut_warnings))
+
         for idx, doc in enumerate(retrieved_docs, start=1):
             source_label = doc.get("source", "Norma")
             section_label = doc.get("section", "")
@@ -489,7 +556,12 @@ class SadiguaOrchestrator:
             "citations": citations,
             "note_id": note_path.stem,
             "sources": sources_meta,
+            "mutations_detected": mutations_detected,
             "progress": 100
         }
 
-        yield {"type": "done", "note_id": note_path.stem}
+        yield {
+            "type": "done",
+            "note_id": note_path.stem,
+            "mutations_detected": mutations_detected
+        }

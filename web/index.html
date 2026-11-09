@@ -489,6 +489,19 @@
                     <input type="file" id="file-input" style="display: none;" accept=".pdf,.md,.txt">
                 </div>
 
+                <div class="form-group" style="margin-top: 14px; margin-bottom: 24px; background: rgba(7, 20, 43, 0.6); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <label for="curator-instruction-input" style="font-weight: 600; color: var(--bio-cyan); font-size: 13.5px; display: flex; align-items: center; gap: 8px;">
+                        <span>⚖️</span>
+                        <span>Instrucción de Curaduría Jurídica y Mutación de Precedente (Opcional):</span>
+                    </label>
+                    <input type="text" id="curator-instruction-input" class="form-control" style="margin-top: 8px;"
+                        placeholder="Ej: 'Esta sentencia SU-045 de 2026 cambia el criterio de la T-200 de 2018 respecto al plazo de prescripción...'" />
+                    <small style="color: var(--text-muted); font-size: 11.5px; display: block; margin-top: 6px; line-height: 1.4;">
+                        El motor analizará esta instrucción con el LLM local, extraerá el criterio anterior (<strong>¿Qué había antes?</strong>) vs. el nuevo (<strong>¿Qué hay ahora?</strong>),
+                        lo registrará en la base de datos SQLite (<code>data/normative_mutations.db</code>) y actualizará el grafo en Obsidian.
+                    </small>
+                </div>
+
                 <h4 class="section-subtitle">Archivos Originales en el Corpus</h4>
                 <table class="docs-table" style="margin-bottom: 24px;">
                     <thead>
@@ -503,6 +516,32 @@
                         <!-- Filas de documentos dinámicas -->
                     </tbody>
                 </table>
+
+                <div class="view-header" style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <div>
+                        <h3>🏛️ Registro Histórico de Mutaciones y Cambios de Precedente (SQLite)</h3>
+                        <p>Trazabilidad dogmática: reglas superadas, derogatorias y evolución de la jurisprudencia colombiana.</p>
+                    </div>
+                    <button class="filter-btn" id="btn-refresh-mutations">🔄 Actualizar Registro</button>
+                </div>
+
+                <div style="overflow-x: auto; margin-bottom: 28px;">
+                    <table class="docs-table" id="mutations-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Norma Afectada</th>
+                                <th style="width: 15%;">Doc. Modificatorio</th>
+                                <th style="width: 12%;">Tipo Mutación</th>
+                                <th style="width: 24%;">¿Qué había antes? (Superado)</th>
+                                <th style="width: 24%;">¿Qué hay ahora? (Vigente)</th>
+                                <th style="width: 10%; text-align: center;">Trazabilidad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mutations-tbody">
+                            <!-- Filas de mutaciones -->
+                        </tbody>
+                    </table>
+                </div>
 
                 <div class="view-header" style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
                     <div>
@@ -694,6 +733,58 @@
             <div class="modal-footer">
                 <button class="filter-btn" id="modal-cancel">Cancelar</button>
                 <button class="btn-primary" id="modal-save">Guardar en Bóveda</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE TRAZABILIDAD Y MUTACIÓN DE PRECEDENTES (¿QUÉ HABÍA ANTES VS QUÉ HAY AHORA?) -->
+    <div class="modal-overlay" id="mutation-modal">
+        <div class="modal-content" style="max-width: 840px; width: 92%;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 26px;">🏛️</span>
+                    <div>
+                        <h3 id="mutation-modal-title" style="margin: 0; color: var(--bio-cyan); font-size: 16px;">Trazabilidad Dogmática de Precedente Judicial</h3>
+                        <p id="mutation-modal-subtitle" style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-muted);"></p>
+                    </div>
+                </div>
+                <button id="mutation-modal-close" class="modal-close-x">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px 24px;">
+                <!-- Badges resumen -->
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px;" id="mutation-modal-badges"></div>
+
+                <!-- Comparación Antes vs Ahora (Grid 2 columnas) -->
+                <div class="mutation-comparison-grid">
+                    <!-- Columna Izquierda: ¿Qué había antes? -->
+                    <div class="mutation-card superceded-card">
+                        <div class="mutation-card-header">
+                            <span class="badge" style="background: rgba(250, 204, 21, 0.2); color: #FDE047; font-weight: bold;">CRITERIO ANTERIOR (SUPERADO)</span>
+                            <h4 style="margin: 8px 0 0 0; color: #FDE047;">¿Qué había antes?</h4>
+                        </div>
+                        <div class="mutation-card-body" id="modal-regla-anterior"></div>
+                    </div>
+
+                    <!-- Columna Derecha: ¿Qué hay ahora? -->
+                    <div class="mutation-card active-card">
+                        <div class="mutation-card-header">
+                            <span class="badge" style="background: rgba(52, 232, 176, 0.2); color: var(--bio-mint); font-weight: bold;">CRITERIO VIGENTE (OBLIGATORIO)</span>
+                            <h4 style="margin: 8px 0 0 0; color: var(--bio-mint);">¿Qué hay ahora?</h4>
+                        </div>
+                        <div class="mutation-card-body" id="modal-regla-nueva"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 18px; padding: 12px 16px; background: rgba(7, 20, 43, 0.7); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px;"><strong>Efectos Temporales & Concordancias:</strong></div>
+                    <div id="modal-efectos-info" style="font-size: 13px; color: var(--text-primary); line-height: 1.45;"></div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; color: var(--text-muted);">
+                    Almacén Soberano: <code>data/normative_mutations.db</code> (SQLite) & <code>vault/jurisprudencia/</code>
+                </span>
+                <button class="btn-primary" id="btn-close-mutation-modal">Entendido</button>
             </div>
         </div>
     </div>

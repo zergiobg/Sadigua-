@@ -130,3 +130,80 @@ class ObsidianVaultManager:
                     "snippet": content[:200] + "..." if len(content) > 200 else content
                 })
         return results
+
+    def record_precedent_mutation(self, mutation: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Registra la mutación en el Cerebro Obsidiano:
+        1. Crea/actualiza la nota de la nueva jurisprudencia/norma con estado VIGENTE.
+        2. Actualiza la nota del precedente anterior marcándolo como SUPERADO/DEROGADO.
+        3. Inserta enlaces bidireccionales [[wiki]] para el Knowledge Graph de Obsidian.
+        """
+        source_doc = mutation.get("source_doc", "Norma_Nueva")
+        target_norm = mutation.get("target_norm", "Norma_Anterior")
+        mutation_type = mutation.get("mutation_type", "CAMBIO_DE_PRECEDENTE")
+        regla_anterior = mutation.get("regla_anterior", "")
+        regla_nueva = mutation.get("regla_nueva", "")
+        autoridad = mutation.get("autoridad", "Corte Constitucional")
+        fecha = mutation.get("fecha_mutacion", datetime.now().strftime("%Y-%m-%d"))
+
+        source_slug = re.sub(r'[^a-zA-Z0-9_\-]', '_', source_doc.lower()).strip("_")
+        target_slug = re.sub(r'[^a-zA-Z0-9_\-]', '_', target_norm.lower()).strip("_")
+
+        # 1. Nota de la Norma Vigente (Sucesora)
+        source_content = (
+            f"## Regla de Decisión Vigente\n{regla_nueva}\n\n"
+            f"### Trazabilidad de Mutación Jurídica\n"
+            f"- **Tipo de Mutación:** {mutation_type}\n"
+            f"- **Precedente / Norma Superada:** [[{target_slug}]]\n"
+            f"- **Autoridad:** {autoridad}\n"
+            f"- **Fecha:** {fecha}\n"
+            f"- **Criterio Anterior que se recogió/modificó:**\n> «{regla_anterior}»\n"
+        )
+        source_meta = {
+            "estado": "VIGENTE",
+            "tipo": mutation_type,
+            "autoridad": autoridad,
+            "fecha": fecha,
+            "supera_a": f"[[{target_slug}]]"
+        }
+        self.save_note(
+            category="jurisprudencia",
+            note_id=source_slug,
+            title=f"Jurisprudencia Vigente: {source_doc}",
+            content=source_content,
+            metadata=source_meta,
+            tags=["precedente", "vigente", "unificacion"],
+            links=[target_slug]
+        )
+
+        # 2. Nota del Precedente Anterior (Marcado como SUPERADO)
+        target_content = (
+            f"> [!WARNING] PRECEDENTE SUPERADO O NORMA MODIFICADA\n"
+            f"> Este criterio normativo/jurisprudencial fue expresamente superado o derogado por [[{source_slug}]].\n"
+            f"> **Tipo:** {mutation_type} | **Fecha:** {fecha}\n\n"
+            f"## Criterio Histórico Anterior\n{regla_anterior}\n\n"
+            f"## Nueva Regla Vigente Adoptada\n{regla_nueva}\n"
+        )
+        target_meta = {
+            "estado": "SUPERADO",
+            "tipo": mutation_type,
+            "autoridad": autoridad,
+            "fecha_superacion": fecha,
+            "superado_por": f"[[{source_slug}]]",
+            "superceded_by": source_doc
+        }
+        self.save_note(
+            category="jurisprudencia",
+            note_id=target_slug,
+            title=f"Precedente Histórico: {target_norm} (SUPERADO)",
+            content=target_content,
+            metadata=target_meta,
+            tags=["precedente_historico", "superado", "archivo"],
+            links=[source_slug]
+        )
+
+        return {
+            "source_id": source_slug,
+            "target_id": target_slug,
+            "status": "synchronized_in_vault"
+        }

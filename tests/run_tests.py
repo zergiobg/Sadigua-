@@ -33,6 +33,12 @@ from tests.test_concept_normalizer import (
     test_api_check_intent_endpoint,
     test_api_precedent_answer_endpoint
 )
+from tests.test_mutation_engine import (
+    test_sqlite_mutation_storage_and_query,
+    test_obsidian_vault_sync_mutation,
+    test_reranker_temporal_weighting,
+    test_api_mutation_endpoints
+)
 
 def run_all():
     tests = [
@@ -57,6 +63,10 @@ def run_all():
         ("API REST: Endpoint Streaming SSE Gemini Comparativo", test_gemini_comparison_endpoint),
         ("API REST: Endpoint Interceptor de Intención (/api/chat/check-intent)", test_api_check_intent_endpoint),
         ("API REST: Endpoint Respuesta Inmediata de Precedente (/api/chat/precedent-answer)", test_api_precedent_answer_endpoint),
+        ("Mutación SQLite: Almacén y Búsqueda Relacional", test_sqlite_mutation_storage_and_query),
+        ("Mutación Obsidian: Sincronización Bóveda y Wiki-Links", test_obsidian_vault_sync_mutation),
+        ("Reranker Temporal: Penalización Superada vs Boost Histórico", test_reranker_temporal_weighting),
+        ("API REST: Endpoints de Mutación y Trazabilidad Dogmática", test_api_mutation_endpoints),
     ]
 
     passed = 0

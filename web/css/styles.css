@@ -2369,3 +2369,134 @@ body {
     gap: 10px;
     background: var(--bg-abyss);
 }
+
+/* ==========================================================================
+   TRAZABILIDAD DOGMÁTICA Y MUTACIÓN DE PRECEDENTES (OVERRULING / ANTES VS AHORA)
+   ========================================================================== */
+.mutation-comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+    .mutation-comparison-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mutation-card {
+    background: var(--bg-surface);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mutation-card.superceded-card {
+    border-color: rgba(250, 204, 21, 0.4);
+    background: linear-gradient(180deg, rgba(35, 28, 10, 0.45) 0%, rgba(7, 20, 43, 0.6) 100%);
+    box-shadow: 0 2px 12px rgba(250, 204, 21, 0.08);
+}
+
+.mutation-card.superceded-card .mutation-card-header {
+    border-bottom: 1px solid rgba(250, 204, 21, 0.25);
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+
+.mutation-card.active-card {
+    border-color: rgba(52, 232, 176, 0.4);
+    background: linear-gradient(180deg, rgba(10, 38, 30, 0.45) 0%, rgba(7, 20, 43, 0.6) 100%);
+    box-shadow: 0 2px 12px rgba(52, 232, 176, 0.08);
+}
+
+.mutation-card.active-card .mutation-card-header {
+    border-bottom: 1px solid rgba(52, 232, 176, 0.25);
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+
+.mutation-card-body {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+/* Banner Interactivo de Trazabilidad en el Chat */
+.mutation-alert-banner {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: linear-gradient(135deg, rgba(7, 20, 43, 0.95), rgba(11, 30, 59, 0.95));
+    border: 1px solid var(--bio-cyan);
+    border-left: 4px solid var(--bio-mint);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 16px rgba(0, 229, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.mutation-alert-banner:hover {
+    border-color: var(--bio-mint);
+    background: linear-gradient(135deg, rgba(9, 26, 56, 0.98), rgba(14, 37, 71, 0.98));
+    box-shadow: 0 6px 20px rgba(52, 232, 176, 0.22);
+    transform: translateY(-1px);
+}
+
+.mutation-alert-banner .banner-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.mutation-alert-banner .banner-text {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.45;
+}
+
+.mutation-alert-banner .banner-text strong {
+    color: var(--bio-cyan);
+}
+
+.mutation-alert-banner .banner-btn {
+    flex-shrink: 0;
+    background: rgba(52, 232, 176, 0.15);
+    border: 1px solid var(--bio-mint);
+    color: var(--bio-mint);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.mutation-alert-banner:hover .banner-btn {
+    background: var(--bio-mint);
+    color: #01061C;
+}
+
+.btn-view-mutation {
+    background: rgba(0, 229, 255, 0.12);
+    border: 1px solid var(--bio-cyan);
+    color: var(--bio-cyan);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-view-mutation:hover {
+    background: var(--bio-cyan);
+    color: #01061C;
+}
