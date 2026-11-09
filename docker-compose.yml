@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # 1. Motor de Inferencia Local Soberano (Ollama)
+  sadigua-engine:
+    image: ollama/ollama:latest
+    container_name: sadigua-engine
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_NUM_PARALLEL=2
+    # Configuración de recursos para CPU multihilo
+    deploy:
+      resources:
+        limits:
+          memory: 32G
+
+  # 2. Servidor de Búsqueda Vectorial Local (ChromaDB)
+  sadigua-vectordb:
+    image: chromadb/chroma:latest
+    container_name: sadigua-vectordb
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+
+  # 3. Backend & Gateway Sadigua (FastAPI + LangGraph + RAG)
+  sadigua-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sadigua-backend
+    restart: unless-stopped
+    ports:
+      - "7837:7837"
+    env_file:
+      - .env
+    environment:
+      - LOCAL_BASE_URL=http://sadigua-engine:11434/v1
+      - PORT=7837
+    volumes:
+      - ./vault:/app/vault
+      - ./cartridges:/app/cartridges
+      - ./data:/app/data
+    depends_on:
+      - sadigua-engine
+      - sadigua-vectordb
+
+volumes:
+  ollama_models:
+  chroma_data:

@@ -1,0 +1,7 @@
+name: "telco_crm"
+display_name: "Cartucho CRM & Atención Telco (ETB)"
+version: "1.0.0"
+domain: "telecomunicaciones"
+description: >
+  Cartucho de conocimiento para atención ciudadana y corporativa en servicios
+  de telecomunicaciones: fibra óptica, fallas técnicas, tarifas y régimen de protección al usuario (Resolución CRC 5111).

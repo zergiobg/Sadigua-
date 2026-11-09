@@ -1,0 +1,37 @@
+# Archivos de entorno y credenciales privadas
+.env
+.env.local
+*.env
+
+# Python y compilados
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+ENV/
+
+# Modelos pesados y pesos de LLM (gestionados externamente por Ollama/llama.cpp)
+*.gguf
+*.bin
+*.safetensors
+*.pt
+*.onnx
+models/
+.ollama/
+
+# Datos temporales y caches locales
+data/*.json
+data/chroma/
+*.log
+
+# IDEs y sistemas operativos
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

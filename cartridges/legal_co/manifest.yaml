@@ -1,0 +1,27 @@
+name: "legal_co"
+display_name: "Cartucho Jurídico & Litigio - Sadigua"
+version: "1.0.0"
+domain: "derecho"
+jurisdiction: "Colombia / Iberoamérica"
+description: >
+  Cartucho de conocimiento de alta precisión para firmas de abogados, departamentos legales
+  y consultoría jurídica. Especializado en análisis normativo, tutela, contratos, derecho procesal
+  y control estricto contra alucinaciones normativas.
+
+corpus_structure:
+  - id: "constitucion"
+    name: "Constitución Política de 1991 y Tratados Internacionales"
+    path: "corpus/01_constitucion"
+  - id: "codigos"
+    name: "Códigos Principales (CGP, CPACA, Civil, Comercio, Penal, Laboral)"
+    path: "corpus/02_codigos"
+  - id: "jurisprudencia"
+    name: "Sentencias de Unificación y Precedentes"
+    path: "corpus/03_jurisprudencia"
+
+rag_parameters:
+  chunk_strategy: "legal_hierarchical"
+  chunk_size_tokens: 600
+  chunk_overlap_tokens: 100
+  mandatory_citations: true
+  min_relevance_score: 0.65

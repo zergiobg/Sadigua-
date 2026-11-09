@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SADIGUA — Shell Soberano de Inteligencia Artificial</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- BARRA SUPERIOR -->
+    <header class="top-header">
+        <div class="brand-section">
+            <div class="brand-logo">S</div>
+            <div>
+                <h1 class="brand-title">SADIGUA</h1>
+                <p class="brand-subtitle">Shell Soberano de Inteligencia Artificial & Gestión del Conocimiento</p>
+            </div>
+        </div>
+
+        <div class="status-badges">
+            <span class="badge badge-green" id="badge-sovereignty">
+                <span>🔒</span> <strong>Soberanía: 100% Local</strong>
+            </span>
+            <span class="badge badge-blue" id="badge-engine">
+                <span>⚡ Motor:</span> <strong id="header-provider">Local (qwen2.5:14b)</strong>
+            </span>
+            <span class="badge" id="badge-cartridge">
+                <span>📁 Cartucho:</span> <strong id="header-cartridge">legal_co</strong>
+            </span>
+            <span class="badge badge-green" id="badge-vault">
+                <span>🧠 Vault:</span> <strong>Obsidian Activo</strong>
+            </span>
+            <span class="badge" id="badge-ram">
+                <span>💻 RAM:</span> <strong>64 GB Disponible</strong>
+            </span>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL CON SIDEBAR -->
+    <div class="main-wrapper">
+        <nav class="sidebar-nav">
+            <div class="nav-item active" data-tab="tab-chat">
+                <span class="nav-icon">💬</span>
+                <span>Consultorio Jurídico</span>
+            </div>
+            <div class="nav-item" data-tab="tab-vault">
+                <span class="nav-icon">🧠</span>
+                <span>Cerebro Obsidiano</span>
+            </div>
+            <div class="nav-item" data-tab="tab-cartridges">
+                <span class="nav-icon">📚</span>
+                <span>Cartuchos & Fuentes</span>
+            </div>
+            <div class="nav-item" data-tab="tab-settings">
+                <span class="nav-icon">⚙️</span>
+                <span>Configuración MLOps</span>
+            </div>
+
+            <div class="sidebar-footer">
+                <p>Sadigua v1.0.0 Soberano</p>
+                <p>Privacidad Ley 1581 / Conpes 4144</p>
+            </div>
+        </nav>
+
+        <!-- =========================================================
+             VISTA 1: CONSULTORIO JURÍDICO (CHAT)
+             ========================================================= -->
+        <main class="content-view active" id="tab-chat">
+            <div class="chat-container">
+                <div class="chat-banner">
+                    <label class="switch-label">
+                        <input type="checkbox" id="chk-anonymize" checked>
+                        <span>🛡️ Anonimización PII Activa (Enmascara Cédulas, Correos y Teléfonos)</span>
+                    </label>
+                    <span class="badge badge-green" id="chat-grounding-indicator">
+                        ✓ Anti-Alucinaciones Activo
+                    </span>
+                </div>
+
+                <div class="messages-area" id="chat-messages">
+                    <div class="msg-wrapper assistant">
+                        <div class="msg-avatar assistant">S</div>
+                        <div class="msg-bubble">
+                            <strong>Bienvenido a Sadigua.</strong><br>
+                            Soy tu asistente soberano para análisis jurídico, litigio y consulta normativa. 
+                            Todas mis respuestas están estrictamente fundamentadas en el corpus legal curado (Constitución, Códigos, Leyes y Jurisprudencia) y verificadas contra alucinaciones.<br><br>
+                            <em>¿Qué caso o disposición legal deseas consultar hoy?</em>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sugerencias rápidas -->
+                <div class="quick-prompts">
+                    <span class="prompt-pill" data-query="¿Cómo opera el juramento estimatorio según el artículo 206 del CGP?">⚖️ Juramento Estimatorio (Art. 206 CGP)</span>
+                    <span class="prompt-pill" data-query="¿Cuáles son los principios para el tratamiento de datos y soberanía según la Ley 1581 y el Conpes 4144?">🔐 Soberanía de Datos y Ley 1581</span>
+                    <span class="prompt-pill" data-query="¿Cuáles son los requisitos para decretar una medida cautelar innominada según el artículo 590 del CGP?">📋 Medidas Cautelares (Art. 590 CGP)</span>
+                    <span class="prompt-pill" data-query="¿Cuáles son los términos para resolver una acción de tutela según la Constitución?">📜 Acción de Tutela (Art. 86)</span>
+                </div>
+
+                <!-- Barra de entrada -->
+                <div class="chat-input-bar">
+                    <textarea id="chat-input" rows="1" placeholder="Escribe tu consulta jurídica o describe los hechos del caso..."></textarea>
+                    <button class="btn-send" id="btn-send">
+                        <span>Consultar</span>
+                        <span>➔</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- =========================================================
+             VISTA 2: CEREBRO OBSIDIANO (BÓVEDA DE MEMORIA)
+             ========================================================= -->
+        <main class="content-view" id="tab-vault">
+            <div class="vault-view">
+                <div class="view-header">
+                    <div>
+                        <h2>Cerebro Obsidiano — Memoria Persistente de Expedientes</h2>
+                        <p>Notas y perfiles de clientes en formato Markdown abierto con enlaces bidireccionales <code>[[wiki]]</code>.</p>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                            📁 Carpeta local editable en Obsidian: <strong>C:\_dev\AI_BOCHICA\Cerebro\vault</strong>
+                        </p>
+                    </div>
+                    <button class="btn-primary" id="btn-new-note">+ Nueva Ficha / Nota</button>
+                </div>
+
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-cat="all">Todos</button>
+                    <button class="filter-btn" data-cat="expedientes">Expedientes</button>
+                    <button class="filter-btn" data-cat="clientes">Clientes</button>
+                    <button class="filter-btn" data-cat="conceptos">Conceptos</button>
+                    <button class="filter-btn" data-cat="jurisprudencia">Jurisprudencia</button>
+                </div>
+
+                <div class="notes-grid" id="vault-notes-grid">
+                    <!-- Tarjetas de notas dinámicas -->
+                </div>
+            </div>
+        </main>
+
+        <!-- =========================================================
+             VISTA 3: CARTUCHOS & FUENTES
+             ========================================================= -->
+        <main class="content-view" id="tab-cartridges">
+            <div class="cartridges-view">
+                <div class="view-header">
+                    <div>
+                        <h2>Cartuchos de Conocimiento (Shell Modular)</h2>
+                        <p>Alterna la especialidad de Sadigua o incorpora nuevas normas, PDF y códigos al corpus activo.</p>
+                    </div>
+                    <button class="btn-primary" id="btn-reindex">🔄 Re-indexar RAG Híbrido</button>
+                </div>
+
+                <div class="cartridges-grid" id="cartridges-list">
+                    <!-- Tarjetas de cartuchos dinámicas -->
+                </div>
+
+                <div class="view-header" style="margin-top: 30px;">
+                    <div>
+                        <h3>Cargar Nueva Norma o Documento (PDF, MD, TXT)</h3>
+                        <p>Sube archivos para incorporarlos de inmediato a la base de conocimiento del cartucho activo.</p>
+                    </div>
+                </div>
+
+                <div class="upload-box" id="drop-area">
+                    <p style="font-size: 28px; margin-bottom: 8px;">📄</p>
+                    <p style="font-weight: 600; color: var(--primary-blue);">Haz clic para seleccionar o arrastra un archivo PDF o Markdown aquí</p>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Soporta: .pdf, .md, .txt (Se segmentará automáticamente por artículos y secciones)</p>
+                    <input type="file" id="file-input" style="display: none;" accept=".pdf,.md,.txt">
+                </div>
+
+                <h4 style="margin: 20px 0 10px 0;">Archivos Originales en el Corpus</h4>
+                <table class="docs-table" style="margin-bottom: 24px;">
+                    <thead>
+                        <tr>
+                            <th>Nombre del Documento</th>
+                            <th>Ubicación Relativa</th>
+                            <th>Formato</th>
+                            <th>Tamaño</th>
+                        </tr>
+                    </thead>
+                    <tbody id="docs-tbody">
+                        <!-- Filas de documentos dinámicas -->
+                    </tbody>
+                </table>
+
+                <!-- NUEVA SECCIÓN: EXPLORADOR DEL ÍNDICE RAG Y VECTORIZACIÓN -->
+                <div class="view-header" style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <div>
+                        <h3>🧠 Visor de Fragmentos Indexados & Vectores en Memoria</h3>
+                        <p>Audita con transparencia matemática qué artículos, tokens y vectores conoce Sadigua actualmente.</p>
+                    </div>
+                </div>
+
+                <!-- Tarjetas de métricas de indexación -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;" id="index-stats-container">
+                    <div class="settings-card" style="margin-bottom: 0; padding: 14px;">
+                        <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700;">Fragmentos (Chunks)</span>
+                        <h2 style="color: var(--primary-blue); font-size: 24px; margin-top: 4px;" id="stat-total-chunks">-</h2>
+                    </div>
+                    <div class="settings-card" style="margin-bottom: 0; padding: 14px;">
+                        <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700;">Vocabulario BM25</span>
+                        <h2 style="color: var(--primary-accent); font-size: 24px; margin-top: 4px;" id="stat-vocab-size">-</h2>
+                    </div>
+                    <div class="settings-card" style="margin-bottom: 0; padding: 14px;">
+                        <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700;">Vectores Activos</span>
+                        <h2 style="color: #10B981; font-size: 24px; margin-top: 4px;" id="stat-vector-count">-</h2>
+                    </div>
+                    <div class="settings-card" style="margin-bottom: 0; padding: 14px;">
+                        <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700;">Fusión RAG</span>
+                        <h2 style="color: var(--text-primary); font-size: 14px; margin-top: 8px;">RRF + Reranker</h2>
+                    </div>
+                </div>
+
+                <!-- Buscador de fragmentos del índice -->
+                <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                    <input type="text" id="index-search-input" class="form-control" placeholder="🔍 Filtrar fragmentos indexados (ej: '206', 'tutela', '1581', 'datos')...">
+                    <button class="filter-btn active" id="btn-index-search">Filtrar</button>
+                </div>
+
+                <!-- Tabla del índice de fragmentos -->
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Artículo / Sección</th>
+                            <th style="width: 20%;">Documento Origen</th>
+                            <th style="width: 45%;">Extracto Normativo Indexado</th>
+                            <th style="width: 10%;">Tokens</th>
+                        </tr>
+                    </thead>
+                    <tbody id="chunks-tbody">
+                        <!-- Filas de fragmentos indexados dinámicos -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+        <!-- =========================================================
+             VISTA 4: CONFIGURACIÓN MLOPS
+             ========================================================= -->
+        <main class="content-view" id="tab-settings">
+            <div class="settings-view">
+                <div class="view-header">
+                    <div>
+                        <h2>Centro de Control MLOps y Motores Cognitivos</h2>
+                        <p>Control de soberanía, proveedor de inferencia y asignación de recursos de hardware.</p>
+                    </div>
+                </div>
+
+                <div class="settings-card" style="border: 2px solid #BFDBFE; background: #F8FAFC;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <h3 style="color: var(--primary-blue); margin: 0;">🛡️ Compuerta de Soberanía (Control de Salida a Nube)</h3>
+                        <span class="badge badge-green" id="egress-status-pill">🔒 Salida a Nube Bloqueada</span>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+                        Por política de soberanía y reserva legal (Ley 1581 / Conpes 4144), Sadigua opera <strong>por defecto en modo 100% local soberano</strong>.
+                        Aunque exista una API Key configurada en las variables de entorno, el backend <strong>bloquea cualquier llamada externa</strong> a menos que actives este permiso explícito.
+                    </p>
+                    <label class="switch-label" style="font-size: 14px; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" id="chk-cloud-egress">
+                        <span>Permitir Salida a la Nube (Google Gemini)</span>
+                    </label>
+                </div>
+
+                <div class="settings-card">
+                    <h3>Motor de Inferencia Activo</h3>
+                    <div class="form-group">
+                        <label>Proveedor:</label>
+                        <select id="cfg-provider" class="form-control">
+                            <option value="gemini">Google Gemini (Cloud Híbrido / Alta Velocidad)</option>
+                            <option value="local">Motor Local Soberano (Ollama / Llama.cpp 100% Offline)</option>
+                        </select>
+                    </div>
+
+                    <div id="cfg-gemini-fields">
+                        <div class="form-group">
+                            <label>Clave de API de Gemini (GEMINI_API_KEY):</label>
+                            <input type="password" id="cfg-gemini-key" class="form-control" placeholder="Pega tu API Key de Gemini aquí">
+                            <small style="color: var(--text-muted); font-size: 11px;">Se almacena de forma segura en tu entorno local.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo Gemini:</label>
+                            <input type="text" id="cfg-gemini-model" class="form-control" value="gemini-2.5-flash">
+                        </div>
+                    </div>
+
+                    <div id="cfg-local-fields" style="display: none;">
+                        <div class="form-group">
+                            <label>URL del Servidor Local (Ollama / llama.cpp):</label>
+                            <input type="text" id="cfg-local-url" class="form-control" value="http://localhost:11434/v1">
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo Local Cuantizado (GGUF):</label>
+                            <input type="text" id="cfg-local-model" class="form-control" value="qwen2.5:14b-instruct">
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" id="btn-save-config">Guardar y Aplicar Configuración</button>
+                </div>
+
+                <div class="settings-card">
+                    <h3>Especificaciones del Hardware Local Detectado</h3>
+                    <p><strong>Procesador:</strong> Intel Core Ultra 5 (12 núcleos, 14 subprocesos lógicos con AVX2)</p>
+                    <p><strong>Memoria RAM del Sistema:</strong> 64 GB DDR5 (Capaz de ejecutar modelos locales de 14B y 32B sin intercambio)</p>
+                    <p><strong>Soberanía de Datos:</strong> Compatible 100% con operación sin conexión (Air-gapped / Localhost)</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL DE VISUALIZACIÓN / EDICIÓN DE NOTA OBSIDIAN -->
+    <div class="modal-overlay" id="note-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Ficha de Memoria — Cerebro Obsidiano</h3>
+                <button id="modal-close" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Categoría:</label>
+                    <select id="modal-note-category" class="form-control">
+                        <option value="expedientes">Expediente</option>
+                        <option value="clientes">Cliente</option>
+                        <option value="conceptos">Concepto</option>
+                        <option value="jurisprudencia">Jurisprudencia</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>ID / Radicado (sin espacios):</label>
+                    <input type="text" id="modal-note-id" class="form-control" placeholder="ej: exp_2026_00512_civil">
+                </div>
+                <div class="form-group">
+                    <label>Título:</label>
+                    <input type="text" id="modal-note-title" class="form-control" placeholder="ej: Caso Ordinario Reclamación Indemnizatoria">
+                </div>
+                <div class="form-group">
+                    <label>Contenido (Markdown):</label>
+                    <textarea id="modal-note-content" class="form-control" rows="8" placeholder="Escribe los hechos, partes, pretensiones o notas..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="filter-btn" id="modal-cancel">Cancelar</button>
+                <button class="btn-primary" id="modal-save">Guardar en Bóveda</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
