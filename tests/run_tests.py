@@ -24,6 +24,7 @@ from tests.test_progressive_and_cache import (
     test_semantic_precedent_cache,
     test_progressive_stream_orchestrator
 )
+from tests.test_thought_completion import test_thought_completion_detector
 
 def run_all():
     tests = [
@@ -35,6 +36,7 @@ def run_all():
         ("Dual-Engine Factory (Gemini + Local)", test_engine_factory),
         ("Caché Semántico de Precedentes (Similitud Coseno)", test_semantic_precedent_cache),
         ("Orquestador Progresivo Multi-Onda & Telemetría", test_progressive_stream_orchestrator),
+        ("Guardián Anti-Truncamiento & Cierre de Ideas", test_thought_completion_detector),
         ("API REST: Estado del Sistema & Health", test_api_health_and_status),
         ("API REST: Servidor Web Estático (HTML/CSS/JS)", test_api_static_web_serving),
         ("API REST: Gestión de Cartuchos y Documentos", test_api_cartridges_and_docs),

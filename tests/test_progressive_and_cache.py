@@ -79,6 +79,10 @@ def test_progressive_stream_orchestrator():
         cartridge_name="legal_co",
         llm_engine=mock_llm
     )
+    # Aislar el caché para que no colisione con precedentes reales en disco
+    test_vault = ObsidianVaultManager(vault_path=Path("vault_orch_test"))
+    orch.semantic_cache = SemanticPrecedentCache(vault_manager=test_vault)
+    orch.semantic_cache.entries = []
 
     async def run_stream():
         query = f"¿Cuáles son los términos para resolver una tutela? {uuid.uuid4().hex[:6]}"

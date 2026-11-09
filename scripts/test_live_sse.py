@@ -11,7 +11,7 @@ payload = {"message": "¿Qué puedo hacer si una empresa vendió mis datos perso
 print("=== ENVIANDO CONSULTA JURÍDICA AL ENDPOINT SSE ===", flush=True)
 start = time.time()
 
-with httpx.Client(timeout=60.0) as client:
+with httpx.Client(timeout=180.0) as client:
     with client.stream("POST", url, json=payload) as response:
         token_count = 0
         current_wave = None

@@ -263,17 +263,28 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                             if (event.phase === "wave_1_start") {
                                 if (hudBadgeWave1) hudBadgeWave1.className = "wave-pill active";
+                            } else if (event.phase === "wave_1_continuation") {
+                                if (hudPhaseLabel) hudPhaseLabel.textContent = "🛡️ Completando cierre de idea en Onda 1...";
                             } else if (event.phase === "wave_1_done") {
                                 if (hudBadgeWave1) hudBadgeWave1.className = "wave-pill done";
                                 if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill active";
+                                // Píldora de espera activa para informar al usuario que se está cocinando la Onda 2
+                                if (contentEl && !document.getElementById("wave2-cooking-pill")) {
+                                    const pill = document.createElement("div");
+                                    pill.id = "wave2-cooking-pill";
+                                    pill.className = "wave2-cooking-pill";
+                                    pill.innerHTML = `<span class="hud-spinner"></span> <span><strong>Cocinando Onda 2:</strong> Redactando Ruta Procesal, Tutela y Acciones Concretas...</span>`;
+                                    contentEl.parentElement.appendChild(pill);
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                }
                             } else if (event.phase === "wave_2_start") {
                                 if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill active";
-                                if (!isWave2Started) {
-                                    isWave2Started = true;
-                                    accumulatedText += "\n\n---\n\n### Ruta Procesal, Tutela y Acciones Concretas\n\n";
-                                }
+                            } else if (event.phase === "wave_2_continuation") {
+                                if (hudPhaseLabel) hudPhaseLabel.textContent = "🛡️ Completando recomendaciones y cierre final...";
                             } else if (event.phase === "wave_2_done") {
                                 if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill done";
+                                const cookingPill = document.getElementById("wave2-cooking-pill");
+                                if (cookingPill) cookingPill.remove();
                             }
                         } else if (event.type === "documents_found") {
                             if (hudDocsList && event.documents) {
@@ -286,12 +297,20 @@ document.addEventListener("DOMContentLoaded", () => {
                                 hudProgressFill.style.width = `${event.progress}%`;
                             }
                         } else if (event.type === "token") {
+                            if (event.wave === 2 && !isWave2Started) {
+                                isWave2Started = true;
+                                const cookingPill = document.getElementById("wave2-cooking-pill");
+                                if (cookingPill) cookingPill.remove();
+                                accumulatedText += "\n\n---\n\n### Ruta Procesal, Tutela y Acciones Concretas\n\n";
+                            }
                             accumulatedText += event.text;
                             if (contentEl) {
                                 contentEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
                             }
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         } else if (event.type === "precedent_hit") {
+                            const cookingPill = document.getElementById("wave2-cooking-pill");
+                            if (cookingPill) cookingPill.remove();
                             const duration = stopStopwatch();
                             if (hudBadgeCache) {
                                 hudBadgeCache.classList.remove("hidden");
@@ -318,6 +337,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                             renderSources(sourcesEl, event.sources);
                         } else if (event.type === "done") {
+                            const cookingPill = document.getElementById("wave2-cooking-pill");
+                            if (cookingPill) cookingPill.remove();
                             const totalDuration = stopStopwatch();
                             if (hudProgressFill) hudProgressFill.style.width = "100%";
                             if (hudPhaseLabel) hudPhaseLabel.textContent = `✓ Respuesta completada y archivada en Bóveda (${totalDuration}s)`;

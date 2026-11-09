@@ -899,3 +899,18 @@ body {
     border-radius: 4px;
     margin-bottom: 8px;
 }
+
+.wave2-cooking-pill {
+    background: #EFF6FF;
+    border: 1px dashed #60A5FA;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    margin-top: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.3s ease-out;
+}

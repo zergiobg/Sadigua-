@@ -16,7 +16,7 @@ class SadiguaOrchestrator:
     Orquestador Cognitivo Principal del Proyecto Sadigua.
     Gestiona el ciclo de vida de la consulta, la memoria 'Cerebro Obsidiano',
     el caché semántico de precedentes, el RAG híbrido normativo y la
-    generación progresiva en ondas con telemetría.
+    generación progresiva en ondas con telemetría y blindaje anti-truncamiento.
     """
 
     def __init__(
@@ -46,16 +46,32 @@ class SadiguaOrchestrator:
             "del conocimiento y análisis riguroso. Responde siempre con base en hechos verificables."
         )
 
+    @staticmethod
+    def is_thought_complete(text: str) -> bool:
+        """
+        Determina si un texto jurídico termina de forma limpia y cerrada.
+        Retorna True si termina con puntuación terminal (., !, ?, etc.) o bloque cerrado.
+        Retorna False si fue cortado a mitad de una palabra (ej. 'ordin') o frase incompleta.
+        """
+        t = text.strip()
+        if not t:
+            return True
+        # Si termina en signo de puntuación terminal
+        if t[-1] in {".", "!", "?", "”", "»", ")", "]"}:
+            return True
+        # Si la última línea no vacía termina en signo de cierre
+        lines = [line.strip() for line in t.split("\n") if line.strip()]
+        if lines and lines[-1][-1] in {".", "!", "?", "”", "»", ")", "]"}:
+            return True
+        return False
+
     async def answer(self, user_query: str) -> Dict[str, Any]:
         """
-        Flujo de razonamiento completo síncrono.
-        1. Consulta Precedente Semántico en Bóveda (0.05s si existe).
-        2. Si no existe, ejecuta RAG híbrido y generación LLM.
-        3. Verifica Grounding y archiva el nuevo precedente en Bóveda.
+        Flujo de razonamiento síncrono completo con blindaje anti-truncamiento.
         """
         self.memory.add_user_message(user_query)
 
-        # 1. Chequeo de Caché Semántico en Bóveda
+        # 1. Chequeo de Caché Semántico en Bóveda (0.05s)
         cached = await self.semantic_cache.check_precedent(user_query)
         if cached:
             self.memory.add_assistant_message(cached["answer"], citations=[])
@@ -100,18 +116,42 @@ class SadiguaOrchestrator:
             f"CONSULTA DEL USUARIO / CASO JURÍDICO:\n{user_query}\n\n"
             f"FUENTES NORMATIVAS Y JURISPRUDENCIALES CURADAS DISPONIBLES:\n"
             f"{context_str if context_str else '[NO SE DISPONE DE FUENTES ESPECÍFICAS PARA ESTA CONSULTA]'}\n\n"
-            "INSTRUCCIONES:\n"
+            "INSTRUCCIONES DE DICTAMEN INTEGRAL:\n"
             "Responde estrictamente con apego al contexto normativo disponible. "
             "Cita expresamente los artículos y normas que sustentan tu posición. "
-            "Si las fuentes no contienen la respuesta, decláralo de manera explícita y no inventes normas."
+            "Estructura tu dictamen en:\n"
+            "1. Veredicto Jurídico Directo\n"
+            "2. Fundamento Normativo Aplicable\n"
+            "3. Análisis y Subsunción Jurídica\n"
+            "4. Ruta Procesal y Acciones Concretas (SIC, Tutela, Reclamación)\n"
+            "5. Conclusión y Recomendaciones Prácticas Finales.\n\n"
+            "REGLA CRÍTICA: Desarrolla cada sección de forma completa y asegúrate de concluir "
+            "todas las oraciones con punto final cerrado. No dejes ideas o listas a medias."
         )
 
-        # 4. Generación mediante Motor LLM Desacoplado
+        # 4. Generación mediante Motor LLM Desacoplado (Presupuesto generoso de 2500 tokens)
         raw_answer = await self.llm.generate(
             prompt=prompt,
             system_prompt=self.system_prompt,
-            temperature=0.1
+            temperature=0.1,
+            max_tokens=2500
         )
+
+        # Mecanismo Anti-Truncamiento: Auto-cierre si la idea quedó interrumpida
+        if not self.is_thought_complete(raw_answer):
+            prompt_continuation = (
+                "IMPORTANTE: El siguiente dictamen jurídico se interrumpió abruptamente antes de concluir la frase o recomendación:\n\n"
+                f"«...{raw_answer[-300:]}»\n\n"
+                "INSTRUCCIÓN: Completa exactamente la última palabra y concluye la frase u oración interrumpida "
+                "de manera coherente y cerrada con punto final. NO repitas el texto previo; escribe ÚNICAMENTE la continuación y cierre."
+            )
+            continuation = await self.llm.generate(
+                prompt=prompt_continuation,
+                system_prompt=self.system_prompt,
+                temperature=0.0,
+                max_tokens=400
+            )
+            raw_answer = raw_answer.rstrip() + " " + continuation.strip()
 
         # 5. Verificación de Grounding (Anti-Alucinaciones)
         is_grounded, grounding_msg, citations = GroundingValidator.validate(raw_answer, retrieved_docs)
@@ -147,13 +187,12 @@ class SadiguaOrchestrator:
 
     async def answer_progressive_stream(self, user_query: str) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Generador Asíncrono de Respuestas Progresivas en Ondas con Telemetría Activa.
-        Yields eventos en tiempo real:
-        - Estado de Fases (Búsqueda Precedentes -> RAG Híbrido -> Reranking)
-        - Documentos consultados (para badges del HUD)
-        - Onda 1: Dictamen y Fundamento Inmediato (Tokens en streaming)
-        - Onda 2: Ruta Procesal, Tutela y Recursos (Tokens en streaming continuo)
-        - Grounding final y Archivo de Precedente en Bóveda
+        Generador Asíncrono de Respuestas Progresivas en Ondas con Blindaje Anti-Truncamiento.
+        - Onda 1: Dictamen y Fundamento Inmediato (Tokens en streaming con límite generoso).
+        - Auto-Continuation Guard en Onda 1 si la frase no termina en punto.
+        - Onda 2: Ruta Procesal, Tutela, Reclamaciones y Recomendaciones Completas.
+        - Auto-Continuation Guard en Onda 2 si la recomendación no concluye en punto.
+        - Grounding final y Archivo de Precedente en Bóveda.
         """
         # Fase 1: Caché Semántico de Precedentes
         yield {
@@ -208,7 +247,7 @@ class SadiguaOrchestrator:
             }
             retrieved_docs = self.reranker.rerank(user_query, candidates, top_n=3)
 
-        # Emitir documentos encontrados para el HUD
+        # Emitir documentos identificados para badges del HUD
         doc_badges = [
             {
                 "source": d.get("source", "Norma"),
@@ -247,12 +286,18 @@ class SadiguaOrchestrator:
             f"CONSULTA DEL USUARIO / CASO JURÍDICO:\n{user_query}\n\n"
             f"FUENTES NORMATIVAS Y JURISPRUDENCIALES CURADAS DISPONIBLES:\n"
             f"{context_str if context_str else '[NO SE DISPONE DE FUENTES ESPECÍFICAS PARA ESTA CONSULTA]'}\n\n"
-            "INSTRUCCIÓN PARA LA ONDA 1 (DICTAMEN Y FUNDAMENTOS INMEDIATOS):\n"
-            "Responde de forma directa, rigurosa y concisa estructurando:\n"
-            "1. Veredicto jurídico directo sobre el caso.\n"
-            "2. Fundamento normativo aplicable con cita textual de artículos y normas del contexto.\n"
-            "3. Breve análisis y subsunción jurídica del caso.\n"
-            "NO incluyas aún la ruta procesal o memoriales detallados (se generarán en la siguiente sección)."
+            "ESTRUCTURA OBLIGATORIA PARA LA ONDA 1 (DICTAMEN Y FUNDAMENTOS INMEDIATOS):\n"
+            "1. ### Veredicto Jurídico Directo\n"
+            "   (Dictamina de forma frontal, clara y contundente sobre la vulneración jurídica).\n"
+            "2. ### Fundamento Normativo Aplicable\n"
+            "   (Cita y analiza únicamente los 2 a 4 artículos clave presentes en las fuentes anteriores. PROHIBIDO hacer listas numéricas o secuencias de artículos; explica en prosa qué dispone cada norma).\n"
+            "3. ### Análisis y Subsunción Jurídica\n"
+            "   (Aplica rigurosamente las normas citadas a los hechos expuestos por el usuario).\n\n"
+            "REGLAS CRÍTICAS DE REDACCIÓN:\n"
+            "- Redacta en prosa jurídica profesional, fluida y argumentada.\n"
+            "- Concluye la Onda 1 al terminar la subsunción jurídica con una oración completa y punto final.\n"
+            "- NO inicies la sección de ruta procesal, acciones ni memoriales aquí (serán abordados en la Onda 2).\n"
+            "- NUNCA dejes oraciones inconclusas."
         )
 
         wave_1_text = ""
@@ -261,14 +306,40 @@ class SadiguaOrchestrator:
                 prompt=prompt_wave_1,
                 system_prompt=self.system_prompt,
                 temperature=0.1,
-                max_tokens=450
+                max_tokens=1500  # Presupuesto amplio para evitar truncamientos
             ):
                 wave_1_text += token
                 yield {"type": "token", "wave": 1, "text": token}
         except Exception as e:
-            # Fallback en caso de error en streaming
-            wave_1_text = await self.llm.generate(prompt=prompt_wave_1, system_prompt=self.system_prompt)
+            wave_1_text = await self.llm.generate(prompt=prompt_wave_1, system_prompt=self.system_prompt, max_tokens=1500)
             yield {"type": "token", "wave": 1, "text": wave_1_text}
+
+        # Guardián Anti-Truncamiento: Onda 1
+        if not self.is_thought_complete(wave_1_text):
+            yield {
+                "type": "phase",
+                "phase": "wave_1_continuation",
+                "message": "Completando cierre de idea en Onda 1...",
+                "wave": 1,
+                "progress": 72
+            }
+            prompt_c1 = (
+                "IMPORTANTE: El siguiente dictamen jurídico se interrumpió antes de completar la frase:\n\n"
+                f"«...{wave_1_text[-300:]}»\n\n"
+                "INSTRUCCIÓN: Completa exactamente la última palabra y concluye la frase u oración interrumpida "
+                "de manera coherente y cerrada con punto final. NO repitas el texto previo; escribe ÚNICAMENTE la continuación y cierre."
+            )
+            try:
+                async for token in self.llm.stream(
+                    prompt=prompt_c1,
+                    system_prompt=self.system_prompt,
+                    temperature=0.0,
+                    max_tokens=300
+                ):
+                    wave_1_text += token
+                    yield {"type": "token", "wave": 1, "text": token}
+            except Exception:
+                pass
 
         yield {
             "type": "phase",
@@ -291,12 +362,17 @@ class SadiguaOrchestrator:
             f"CONSULTA ORIGINAL:\n{user_query}\n\n"
             f"DICTAMEN JURÍDICO Y FUNDAMENTOS YA EMITIDOS EN ONDA 1:\n{wave_1_text}\n\n"
             f"FUENTES NORMATIVAS:\n{context_str}\n\n"
-            "INSTRUCCIÓN PARA LA ONDA 2 (RUTA PROCESAL, ACCIONES PRÁCTICAS Y TUTELA):\n"
-            "Con base en el dictamen ya emitido, detalla ahora de manera exhaustiva y práctica:\n"
-            "1. Ruta procesal paso a paso para el afectado.\n"
-            "2. Acciones concretas: Reclamación directa, Derecho de Petición, Denuncia ante SIC / Entidad competente o Acción de Tutela.\n"
-            "3. Recomendación práctica final y medidas cautelares o preventivas.\n"
-            "Redacta con precisión jurídica y claridad práctica."
+            "ESTRUCTURA OBLIGATORIA PARA LA ONDA 2 (RUTA PROCESAL Y ESTRATEGIA DE LITIGIO):\n"
+            "1. ### Ruta Procesal Paso a Paso para el Afectado\n"
+            "   (Paso 1: Reclamación directa formal previa ante el responsable. Paso 2: Queja/Denuncia formal administrativa ante la Superintendencia de Industria y Comercio - SIC).\n"
+            "2. ### Acciones Judiciales y Constitucionales\n"
+            "   (Procedencia de la Acción de Tutela por vulneración del derecho fundamental al Hábeas Data / Intimidad, y Demanda de Responsabilidad Civil por perjuicios ante la jurisdicción ordinaria civil).\n"
+            "3. ### Conclusión y Recomendaciones Prácticas Finales\n"
+            "   (Preservación de cadena de custodia y evidencias digitales, medidas cautelares y advertencias legales definitivas de cierre).\n\n"
+            "REGLAS CRÍTICAS DE REDACCIÓN:\n"
+            "- Desarrolla cada recomendación procesal de manera sustantiva, útil y redactada en párrafos claros.\n"
+            "- Concluye todo el dictamen con un párrafo final de recomendaciones y advertencias cerrado con punto final.\n"
+            "- NUNCA hagas listas vacías de números ni dejes ideas inconclusas."
         )
 
         wave_2_text = ""
@@ -305,13 +381,40 @@ class SadiguaOrchestrator:
                 prompt=prompt_wave_2,
                 system_prompt=self.system_prompt,
                 temperature=0.1,
-                max_tokens=800
+                max_tokens=2500  # Presupuesto amplio para evitar truncamientos
             ):
                 wave_2_text += token
                 yield {"type": "token", "wave": 2, "text": token}
         except Exception as e:
-            wave_2_text = await self.llm.generate(prompt=prompt_wave_2, system_prompt=self.system_prompt)
+            wave_2_text = await self.llm.generate(prompt=prompt_wave_2, system_prompt=self.system_prompt, max_tokens=2500)
             yield {"type": "token", "wave": 2, "text": wave_2_text}
+
+        # Guardián Anti-Truncamiento: Onda 2
+        if not self.is_thought_complete(wave_2_text):
+            yield {
+                "type": "phase",
+                "phase": "wave_2_continuation",
+                "message": "Completando recomendaciones procesales finales...",
+                "wave": 2,
+                "progress": 92
+            }
+            prompt_c2 = (
+                "IMPORTANTE: La siguiente recomendación o ruta procesal se interrumpió antes de concluir:\n\n"
+                f"«...{wave_2_text[-300:]}»\n\n"
+                "INSTRUCCIÓN: Completa y concluye la recomendación o procedimiento interrumpido de forma coherente "
+                "y redacta el párrafo de cierre definitivo con punto final. NO repitas texto previo, escribe sólo la continuación."
+            )
+            try:
+                async for token in self.llm.stream(
+                    prompt=prompt_c2,
+                    system_prompt=self.system_prompt,
+                    temperature=0.0,
+                    max_tokens=400
+                ):
+                    wave_2_text += token
+                    yield {"type": "token", "wave": 2, "text": token}
+            except Exception:
+                pass
 
         yield {
             "type": "phase",

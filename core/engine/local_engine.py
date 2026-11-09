@@ -24,7 +24,7 @@ class LocalEngine(BaseLLMEngine):
             raw_url = raw_url[:-3]
         self.base_url = raw_url
         self.model = model or settings.LOCAL_MODEL
-        self.timeout = timeout
+        self.timeout = timeout or 300.0
         
         # Auto-calibración dinámica de hilos de CPU según el hardware detectado
         if num_threads is None:
@@ -57,8 +57,10 @@ class LocalEngine(BaseLLMEngine):
             "options": {
                 "temperature": temperature,
                 "num_thread": self.num_threads,
-                "num_predict": max_tokens or 1200,
-                "num_ctx": 4096
+                "num_predict": max_tokens or 2048,
+                "num_ctx": 4096,
+                "repeat_penalty": 1.15,
+                "top_p": 0.9
             }
         }
 
@@ -95,8 +97,10 @@ class LocalEngine(BaseLLMEngine):
             "options": {
                 "temperature": temperature,
                 "num_thread": self.num_threads,
-                "num_predict": max_tokens or 1200,
-                "num_ctx": 4096
+                "num_predict": max_tokens or 2048,
+                "num_ctx": 4096,
+                "repeat_penalty": 1.15,
+                "top_p": 0.9
             }
         }
 
