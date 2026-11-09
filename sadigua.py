@@ -91,6 +91,72 @@ def cmd_vault():
         print(f"   Extracto: {n['snippet']}")
         print()
 
+def cmd_sync(commit_msg="Update Sadigua core and knowledge base"):
+    import subprocess
+    print("=" * 65)
+    print("SADIGUA - SINCRONIZADOR DUAL (GIT & GOOGLE DRIVE)")
+    print("=" * 65)
+
+    base_dir = str(settings.BASE_DIR)
+    gdrive_dest = Path("G:/My Drive/AI_BOCHICA/Sadigua")
+
+    # 1. Sincronización con Git Local
+    print("\n[1/3] Sincronizando repositorio Git local...")
+    try:
+        subprocess.run(["git", "add", "."], cwd=base_dir, check=True)
+        # Comprobar si hay cambios para commitear
+        status_res = subprocess.run(["git", "status", "--porcelain"], cwd=base_dir, capture_output=True, text=True)
+        if status_res.stdout.strip():
+            subprocess.run(["git", "commit", "-m", commit_msg], cwd=base_dir, check=True)
+            print(f"[OK] Commit local creado: '{commit_msg}'")
+        else:
+            print("[*] Repositorio Git limpio, sin cambios pendientes.")
+    except Exception as e:
+        print(f"[!] Advertencia en Git local: {e}")
+
+    # 2. Sincronización con GitHub (Remote)
+    print("\n[2/3] Verificando sincronización con GitHub Remoto...")
+    try:
+        remotes_res = subprocess.run(["git", "remote"], cwd=base_dir, capture_output=True, text=True)
+        if "origin" in remotes_res.stdout:
+            push_res = subprocess.run(["git", "push", "origin", "main"], cwd=base_dir, capture_output=True, text=True)
+            if push_res.returncode == 0:
+                print("[OK] Sincronizado exitosamente con GitHub (branch 'main').")
+            else:
+                print(f"[!] Git push falló o requiere autenticación: {push_res.stderr.strip()}")
+        else:
+            print("[*] No hay remote 'origin' configurado aún.")
+            print("    Para vincular tu repositorio de GitHub ejecuta:")
+            print("    git remote add origin https://github.com/Zergiobg/<tu-repo>.git")
+            print("    git push -u origin main")
+    except Exception as e:
+        print(f"[!] Error comunicando con GitHub: {e}")
+
+    # 3. Sincronización con Google Drive
+    print(f"\n[3/3] Sincronizando con Google Drive ({gdrive_dest})...")
+    if Path("G:/My Drive").exists():
+        gdrive_dest.mkdir(parents=True, exist_ok=True)
+        # Usar robocopy para espejo rápido en Windows
+        cmd_robo = [
+            "robocopy", base_dir, str(gdrive_dest),
+            "/E", "/XD", ".git", ".venv", "venv", "__pycache__", "data", ".ollama",
+            "/XF", ".env", "*.gguf", "*.bin",
+            "/NFL", "/NDL", "/NJH", "/NJS"
+        ]
+        res_robo = subprocess.run(cmd_robo, capture_output=True)
+        # En robocopy, 0 o 1 son códigos de éxito
+        if res_robo.returncode in [0, 1]:
+            print(f"[OK] Proyecto Sadigua sincronizado al 100% en Google Drive.")
+            print(f"     Ubicación: G:\\My Drive\\AI_BOCHICA\\Sadigua")
+        else:
+            print(f"[!] Código de salida robocopy: {res_robo.returncode}")
+    else:
+        print("[!] No se detectó la unidad G:\\My Drive de Google Drive for Desktop en este equipo.")
+
+    print("\n" + "=" * 65)
+    print("PROCESO DE SINCRONIZACIÓN FINALIZADO")
+    print("=" * 65)
+
 def main():
     if len(sys.argv) < 2 or sys.argv[1] == "info":
         print(f"SADIGUA - Versión 1.0.0")
@@ -98,10 +164,11 @@ def main():
         print(f"Cartucho Activo: {settings.ACTIVE_CARTRIDGE}")
         print(f"Ruta Bóveda: {settings.VAULT_PATH}")
         print("\nComandos disponibles:")
-        print("  python sadigua.py web       -> Inicia el servidor Web y la interfaz gráfica")
+        print("  python sadigua.py web       -> Inicia el servidor Web y la interfaz gráfica (puerto 7837)")
         print("  python sadigua.py chat      -> Inicia sesión de consulta jurídica en terminal")
         print("  python sadigua.py ingest    -> Re-indexa el corpus del cartucho activo")
         print("  python sadigua.py vault     -> Lista los expedientes y notas del Cerebro Obsidiano")
+        print("  python sadigua.py sync      -> Sincroniza automáticamente con Git y Google Drive")
         return
 
     cmd = sys.argv[1]
@@ -109,6 +176,9 @@ def main():
         import uvicorn
         print(f"[*] Iniciando SADIGUA Web en http://localhost:{settings.PORT}")
         uvicorn.run("gateway.api:app", host=settings.HOST, port=settings.PORT, reload=False)
+    elif cmd == "sync":
+        msg = sys.argv[2] if len(sys.argv) > 2 else "Update Sadigua core and knowledge base"
+        cmd_sync(msg)
     elif cmd == "ingest":
         asyncio.run(cmd_ingest())
     elif cmd == "chat":
