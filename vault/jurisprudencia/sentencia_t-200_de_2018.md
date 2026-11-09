@@ -7,7 +7,7 @@ superado_por: "[[sentencia_su-045_de_2026]]"
 superceded_by: "Sentencia SU-045 de 2026"
 id: "sentencia_t-200_de_2018"
 titulo: "Precedente Histórico: Sentencia T-200 de 2018 (SUPERADO)"
-actualizado: "2026-11-09 18:14:12"
+actualizado: "2026-11-09 18:31:53"
 tags: ["precedente_historico", "superado", "archivo"]
 ---
 # Precedente Histórico: Sentencia T-200 de 2018 (SUPERADO)
