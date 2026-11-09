@@ -16,7 +16,13 @@ from tests.test_api_endpoints import (
     test_api_health_and_status,
     test_api_static_web_serving,
     test_api_cartridges_and_docs,
-    test_api_vault_crud
+    test_api_vault_crud,
+    test_api_vault_consultas,
+    test_api_chat_progressive
+)
+from tests.test_progressive_and_cache import (
+    test_semantic_precedent_cache,
+    test_progressive_stream_orchestrator
 )
 
 def run_all():
@@ -27,10 +33,14 @@ def run_all():
         ("Pure BM25 Exact Match Engine", test_pure_bm25_exact_match),
         ("Grounding Validator (Anti-Alucinaciones)", test_grounding_validator),
         ("Dual-Engine Factory (Gemini + Local)", test_engine_factory),
+        ("Caché Semántico de Precedentes (Similitud Coseno)", test_semantic_precedent_cache),
+        ("Orquestador Progresivo Multi-Onda & Telemetría", test_progressive_stream_orchestrator),
         ("API REST: Estado del Sistema & Health", test_api_health_and_status),
         ("API REST: Servidor Web Estático (HTML/CSS/JS)", test_api_static_web_serving),
         ("API REST: Gestión de Cartuchos y Documentos", test_api_cartridges_and_docs),
         ("API REST: CRUD de Bóveda Obsidian (Expedientes)", test_api_vault_crud),
+        ("API REST: Catálogo de Precedentes / Consultas", test_api_vault_consultas),
+        ("API REST: Endpoint Streaming SSE Progresivo", test_api_chat_progressive),
     ]
 
     passed = 0

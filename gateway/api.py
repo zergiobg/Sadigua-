@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -6,7 +7,7 @@ from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from config.settings import settings
@@ -163,6 +164,54 @@ async def chat_endpoint(request: ChatRequest):
         result["answer"] = PIIAnonymizer.unmask(result["answer"], mapping)
 
     return result
+
+@app.post("/api/chat/progressive")
+async def chat_progressive_endpoint(request: ChatRequest):
+    """
+    Endpoint SSE (Server-Sent Events) para Generación Progresiva en Ondas
+    y Telemetría Activa (cronómetro, fases, documentos RAG en tiempo real).
+    """
+    user_query = request.message.strip()
+    if not user_query:
+        raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío.")
+
+    mapping = {}
+    if request.anonymize:
+        user_query, mapping = PIIAnonymizer.mask(user_query)
+
+    async def sse_event_stream():
+        try:
+            async for event in orchestrator.answer_progressive_stream(user_query):
+                # Si hubo enmascaramiento de PII, restaurar en los textos que se envíen
+                if request.anonymize and mapping:
+                    if event.get("type") == "token" and "text" in event:
+                        event["text"] = PIIAnonymizer.unmask(event["text"], mapping)
+                    elif event.get("type") == "precedent_hit" and "answer" in event:
+                        event["answer"] = PIIAnonymizer.unmask(event["answer"], mapping)
+
+                data_str = json.dumps(event, ensure_ascii=False)
+                yield f"data: {data_str}\n\n"
+        except Exception as e:
+            err_data = json.dumps({"type": "error", "message": str(e)}, ensure_ascii=False)
+            yield f"data: {err_data}\n\n"
+
+    return StreamingResponse(
+        sse_event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+@app.get("/api/vault/consultas")
+def list_vault_consultas():
+    """Retorna el catálogo de precedentes indexados en vault/consultas/"""
+    return {
+        "total_consultas": len(orchestrator.semantic_cache.entries),
+        "consultas": orchestrator.semantic_cache.entries
+    }
 
 # -------------------------------------------------------------
 # ENDPOINTS DE CARTUCHOS & DOCUMENTOS

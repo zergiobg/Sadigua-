@@ -15,7 +15,7 @@ class ObsidianVaultManager:
 
     def __init__(self, vault_path: Optional[Path] = None):
         self.vault_path = vault_path or settings.VAULT_PATH
-        self.categories = ["expedientes", "clientes", "conceptos", "jurisprudencia"]
+        self.categories = ["expedientes", "clientes", "conceptos", "jurisprudencia", "consultas"]
         self._initialize_structure()
 
     def _initialize_structure(self):

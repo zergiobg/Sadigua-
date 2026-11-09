@@ -100,6 +100,34 @@
                     </div>
                 </div>
 
+                <!-- HUD DE TELEMETRÍA EN VIVO (Generación Progresiva en Ondas & Caché Semántico) -->
+                <div id="chat-hud" class="chat-hud hidden">
+                    <div class="hud-header">
+                        <div class="hud-phase-status">
+                            <span class="hud-spinner"></span>
+                            <span id="hud-phase-label">Iniciando consulta jurídica...</span>
+                        </div>
+                        <div class="hud-timer-badge">
+                            ⏱️ <span id="hud-stopwatch">00:00.0</span>s
+                        </div>
+                    </div>
+                    
+                    <div class="hud-progress-track">
+                        <div id="hud-progress-fill" class="hud-progress-fill" style="width: 5%;"></div>
+                    </div>
+                    
+                    <div class="hud-details">
+                        <div class="hud-waves-indicator">
+                            <span id="hud-badge-cache" class="wave-pill cache-pill hidden">⚡ Precedente en Bóveda</span>
+                            <span id="hud-badge-wave1" class="wave-pill">Onda 1: Dictamen y Fundamento</span>
+                            <span id="hud-badge-wave2" class="wave-pill pending">Onda 2: Procedimiento y Tutela</span>
+                        </div>
+                        <div id="hud-docs-list" class="hud-docs-list">
+                            <!-- Píldoras de documentos consultados -->
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Sugerencias rápidas -->
                 <div class="quick-prompts">
                     <span class="prompt-pill" data-query="¿Cómo opera el juramento estimatorio según el artículo 206 del CGP?">⚖️ Juramento Estimatorio (Art. 206 CGP)</span>
@@ -137,6 +165,7 @@
 
                 <div class="filter-bar">
                     <button class="filter-btn active" data-cat="all">Todos</button>
+                    <button class="filter-btn" data-cat="consultas">⚡ Precedentes</button>
                     <button class="filter-btn" data-cat="expedientes">Expedientes</button>
                     <button class="filter-btn" data-cat="clientes">Clientes</button>
                     <button class="filter-btn" data-cat="conceptos">Conceptos</button>
@@ -338,6 +367,7 @@
                         <option value="clientes">Cliente</option>
                         <option value="conceptos">Concepto</option>
                         <option value="jurisprudencia">Jurisprudencia</option>
+                        <option value="consultas">Consulta / Precedente</option>
                     </select>
                 </div>
                 <div class="form-group">

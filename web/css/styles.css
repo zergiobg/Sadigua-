@@ -714,3 +714,188 @@ body {
     gap: 10px;
     background: var(--bg-alt);
 }
+
+/* -------------------------------------------------------------
+   HUD DE TELEMETRÍA EN VIVO (GENERACIÓN PROGRESIVA & CACHÉ)
+   Paleta: Azul #1D4ED8, Gris #F8FAFC, Blanco #FFFFFF
+   ------------------------------------------------------------- */
+.chat-hud {
+    background: #FFFFFF;
+    border: 1px solid #BFDBFE;
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeIn 0.25s ease-out;
+}
+
+.chat-hud.hidden {
+    display: none !important;
+}
+
+.hud-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.hud-phase-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--primary-blue);
+}
+
+.hud-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #DBEAFE;
+    border-top-color: var(--primary-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.hud-timer-badge {
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    color: var(--primary-blue);
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.5px;
+}
+
+.hud-progress-track {
+    width: 100%;
+    height: 6px;
+    background: #E2E8F0;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.hud-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2563EB, #3B82F6);
+    border-radius: 999px;
+    transition: width 0.35s ease;
+}
+
+.hud-details {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 4px;
+}
+
+.hud-waves-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wave-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid #BFDBFE;
+    background: #EFF6FF;
+    color: var(--primary-blue);
+    transition: all 0.2s ease;
+}
+
+.wave-pill.pending {
+    background: #F1F5F9;
+    border-color: #CBD5E1;
+    color: #64748B;
+    opacity: 0.75;
+}
+
+.wave-pill.active {
+    background: #DBEAFE;
+    border-color: #3B82F6;
+    color: #1D4ED8;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    animation: wavePulse 1.5s infinite;
+}
+
+.wave-pill.done {
+    background: #DCFCE7;
+    border-color: #86EFAC;
+    color: #166534;
+}
+
+.wave-pill.cache-pill {
+    background: #FEF08A;
+    border-color: #FACC15;
+    color: #854D0E;
+    font-weight: 700;
+}
+
+@keyframes wavePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+
+.hud-docs-list {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.doc-pill {
+    font-size: 11px;
+    font-weight: 500;
+    background: #F8FAFC;
+    border: 1px solid #CBD5E1;
+    color: #334155;
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.streaming-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: var(--primary-blue);
+    vertical-align: text-bottom;
+    margin-left: 2px;
+    animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.citation-precedent-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: #FEF08A;
+    border: 1px solid #FACC15;
+    color: #854D0E;
+    font-weight: 600;
+    font-size: 11px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}

@@ -1,7 +1,7 @@
 ---
 id: "test_api_expediente"
 titulo: "Expediente Creado por API"
-actualizado: "2026-11-08 20:22:16"
+actualizado: "2026-11-08 22:17:43"
 tags: ["test", "api"]
 ---
 # Expediente Creado por API

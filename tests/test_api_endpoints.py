@@ -54,3 +54,29 @@ def test_api_vault_crud():
     detail_res = client.get("/api/vault/notes/expedientes/test_api_expediente")
     assert detail_res.status_code == 200
     assert detail_res.json()["metadata"]["titulo"] == "Expediente Creado por API"
+
+def test_api_vault_consultas():
+    client = TestClient(app)
+    res = client.get("/api/vault/consultas")
+    assert res.status_code == 200
+    data = res.json()
+    assert "total_consultas" in data
+    assert "consultas" in data
+    assert isinstance(data["consultas"], list)
+
+def test_api_chat_progressive():
+    from unittest.mock import patch
+
+    async def mock_stream(query):
+        yield {"type": "phase", "phase": "wave_1_start", "message": "Iniciando"}
+        yield {"type": "token", "wave": 1, "text": "Prueba"}
+        yield {"type": "done"}
+
+    with patch("gateway.api.orchestrator.answer_progressive_stream", side_effect=mock_stream):
+        client = TestClient(app)
+        with client.stream("POST", "/api/chat/progressive", json={"message": "Test"}) as res:
+            assert res.status_code == 200
+            assert "text/event-stream" in res.headers["content-type"]
+            lines = list(res.iter_lines())
+            assert any("wave_1_start" in l for l in lines)
+

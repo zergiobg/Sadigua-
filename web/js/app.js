@@ -130,27 +130,98 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // -------------------------------------------------------------
-    // 2. CHAT JURÍDICO INTERACTIVO
+    // 2. CHAT JURÍDICO INTERACTIVO & TELEMETRÍA EN VIVO (ONDAS)
     // -------------------------------------------------------------
     const chatMessages = document.getElementById("chat-messages");
     const chatInput = document.getElementById("chat-input");
     const btnSend = document.getElementById("btn-send");
     const chkAnonymize = document.getElementById("chk-anonymize");
 
+    // Elementos del HUD de Telemetría
+    const chatHud = document.getElementById("chat-hud");
+    const hudPhaseLabel = document.getElementById("hud-phase-label");
+    const hudStopwatch = document.getElementById("hud-stopwatch");
+    const hudProgressFill = document.getElementById("hud-progress-fill");
+    const hudBadgeCache = document.getElementById("hud-badge-cache");
+    const hudBadgeWave1 = document.getElementById("hud-badge-wave1");
+    const hudBadgeWave2 = document.getElementById("hud-badge-wave2");
+    const hudDocsList = document.getElementById("hud-docs-list");
+
+    let stopwatchInterval = null;
+    let stopwatchStartTime = 0;
+
+    function startStopwatch() {
+        clearInterval(stopwatchInterval);
+        stopwatchStartTime = Date.now();
+        if (hudStopwatch) hudStopwatch.textContent = "00:00.0";
+        stopwatchInterval = setInterval(() => {
+            const elapsed = Date.now() - stopwatchStartTime;
+            const totalSec = elapsed / 1000;
+            const min = Math.floor(totalSec / 60);
+            const sec = (totalSec % 60).toFixed(1);
+            const minStr = String(min).padStart(2, "0");
+            const secStr = sec.padStart(4, "0");
+            if (hudStopwatch) hudStopwatch.textContent = `${minStr}:${secStr}`;
+        }, 100);
+    }
+
+    function stopStopwatch() {
+        clearInterval(stopwatchInterval);
+        const elapsed = (Date.now() - stopwatchStartTime) / 1000;
+        return elapsed.toFixed(1);
+    }
+
+    function resetHUD() {
+        if (!chatHud) return;
+        chatHud.classList.remove("hidden");
+        if (hudPhaseLabel) hudPhaseLabel.textContent = "Iniciando consulta jurídica...";
+        if (hudProgressFill) hudProgressFill.style.width = "5%";
+        if (hudBadgeCache) hudBadgeCache.classList.add("hidden");
+        if (hudBadgeWave1) hudBadgeWave1.className = "wave-pill active";
+        if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill pending";
+        if (hudDocsList) hudDocsList.innerHTML = "";
+    }
+
     async function sendQuery(queryText) {
         if (!queryText || state.isQuerying) return;
         state.isQuerying = true;
         btnSend.disabled = true;
 
-        // Renderizar mensaje del usuario
         appendUserMessage(queryText);
         chatInput.value = "";
 
-        // Indicador de análisis
-        const loadingId = appendLoadingMessage();
+        resetHUD();
+        startStopwatch();
+
+        // Crear contenedor para mensaje progresivo del asistente
+        const currentMsgId = "msg-" + Date.now();
+        const wrapper = document.createElement("div");
+        wrapper.className = "msg-wrapper assistant";
+        wrapper.id = currentMsgId;
+        wrapper.innerHTML = `
+            <div class="msg-avatar assistant">S</div>
+            <div class="msg-bubble">
+                <div class="bubble-badges" id="${currentMsgId}-badges">
+                    <span class="badge badge-blue">⚖️ Dictamen en curso...</span>
+                </div>
+                <div class="bubble-content" id="${currentMsgId}-content">
+                    <span class="streaming-cursor"></span>
+                </div>
+                <div class="bubble-sources" id="${currentMsgId}-sources" style="display:none; margin-top: 12px;"></div>
+            </div>
+        `;
+        chatMessages.appendChild(wrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        const contentEl = document.getElementById(`${currentMsgId}-content`);
+        const badgesEl = document.getElementById(`${currentMsgId}-badges`);
+        const sourcesEl = document.getElementById(`${currentMsgId}-sources`);
+
+        let accumulatedText = "";
+        let isWave2Started = false;
 
         try {
-            const res = await fetch("/api/chat", {
+            const res = await fetch("/api/chat/progressive", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -164,12 +235,106 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error(errData.detail || "Error en el servidor");
             }
 
-            const data = await res.json();
-            removeMessage(loadingId);
-            appendAssistantMessage(data);
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
 
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n\n");
+                buffer = lines.pop(); // Guardar residuo incompleto
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+                    const jsonStr = trimmed.slice(5).trim();
+                    if (!jsonStr) continue;
+
+                    try {
+                        const event = JSON.parse(jsonStr);
+
+                        if (event.type === "phase") {
+                            if (hudPhaseLabel) hudPhaseLabel.textContent = event.message;
+                            if (hudProgressFill && event.progress) {
+                                hudProgressFill.style.width = `${event.progress}%`;
+                            }
+                            if (event.phase === "wave_1_start") {
+                                if (hudBadgeWave1) hudBadgeWave1.className = "wave-pill active";
+                            } else if (event.phase === "wave_1_done") {
+                                if (hudBadgeWave1) hudBadgeWave1.className = "wave-pill done";
+                                if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill active";
+                            } else if (event.phase === "wave_2_start") {
+                                if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill active";
+                                if (!isWave2Started) {
+                                    isWave2Started = true;
+                                    accumulatedText += "\n\n---\n\n### Ruta Procesal, Tutela y Acciones Concretas\n\n";
+                                }
+                            } else if (event.phase === "wave_2_done") {
+                                if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill done";
+                            }
+                        } else if (event.type === "documents_found") {
+                            if (hudDocsList && event.documents) {
+                                hudDocsList.innerHTML = event.documents.map(d => {
+                                    const lbl = d.articulo || d.section || "Norma";
+                                    return `<span class="doc-pill" title="${escapeHtml(d.source)}">📄 ${escapeHtml(lbl)}</span>`;
+                                }).join("");
+                            }
+                            if (hudProgressFill && event.progress) {
+                                hudProgressFill.style.width = `${event.progress}%`;
+                            }
+                        } else if (event.type === "token") {
+                            accumulatedText += event.text;
+                            if (contentEl) {
+                                contentEl.innerHTML = formatResponseText(accumulatedText) + '<span class="streaming-cursor"></span>';
+                            }
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        } else if (event.type === "precedent_hit") {
+                            const duration = stopStopwatch();
+                            if (hudBadgeCache) {
+                                hudBadgeCache.classList.remove("hidden");
+                                hudBadgeCache.textContent = `⚡ Precedente en Bóveda (${(event.similarity * 100).toFixed(0)}% match)`;
+                            }
+                            if (hudBadgeWave1) hudBadgeWave1.className = "wave-pill done";
+                            if (hudBadgeWave2) hudBadgeWave2.className = "wave-pill done";
+                            if (hudProgressFill) hudProgressFill.style.width = "100%";
+                            if (hudPhaseLabel) hudPhaseLabel.textContent = `⚡ Precedente recuperado en ${duration}s sin consumo de CPU.`;
+
+                            if (badgesEl) {
+                                badgesEl.innerHTML = `<span class="badge badge-green">⚡ Precedente Verificado en Bóveda (Obsidian)</span>`;
+                            }
+                            accumulatedText = event.answer;
+                            if (contentEl) {
+                                contentEl.innerHTML = formatResponseText(accumulatedText);
+                            }
+                            renderSources(sourcesEl, event.sources);
+                        } else if (event.type === "grounding") {
+                            if (badgesEl) {
+                                badgesEl.innerHTML = event.grounded
+                                    ? `<span class="badge badge-green">✓ Grounding Verificado en Corpus</span>`
+                                    : `<span class="badge" style="background: var(--warning-bg); color: var(--warning-text);">⚠️ ${escapeHtml(event.grounding_status)}</span>`;
+                            }
+                            renderSources(sourcesEl, event.sources);
+                        } else if (event.type === "done") {
+                            const totalDuration = stopStopwatch();
+                            if (hudProgressFill) hudProgressFill.style.width = "100%";
+                            if (hudPhaseLabel) hudPhaseLabel.textContent = `✓ Respuesta completada y archivada en Bóveda (${totalDuration}s)`;
+                            if (contentEl) {
+                                contentEl.innerHTML = formatResponseText(accumulatedText);
+                            }
+                        } else if (event.type === "error") {
+                            throw new Error(event.message);
+                        }
+                    } catch (parseErr) {
+                        console.warn("Línea SSE:", jsonStr, parseErr);
+                    }
+                }
+            }
         } catch (e) {
-            removeMessage(loadingId);
+            stopStopwatch();
+            if (hudPhaseLabel) hudPhaseLabel.textContent = `❌ Error: ${e.message}`;
             appendErrorMessage(e.message);
         } finally {
             state.isQuerying = false;
@@ -178,64 +343,27 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    function renderSources(container, sources) {
+        if (!container || !sources || sources.length === 0) return;
+        const listItems = sources.map(s => {
+            const label = s.articulo || s.section || "Norma";
+            return `<li class="citation-item">📄 ${escapeHtml(s.source)} — <strong>${escapeHtml(label)}</strong></li>`;
+        }).join("");
+        container.innerHTML = `
+            <div class="citations-box">
+                <h5>Fuentes y Normas Recuperadas por RAG:</h5>
+                <ul style="padding-left: 18px; margin: 0;">${listItems}</ul>
+            </div>
+        `;
+        container.style.display = "block";
+    }
+
     function appendUserMessage(text) {
         const wrapper = document.createElement("div");
         wrapper.className = "msg-wrapper user";
         wrapper.innerHTML = `
             <div class="msg-avatar user">U</div>
             <div class="msg-bubble">${escapeHtml(text)}</div>
-        `;
-        chatMessages.appendChild(wrapper);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    function appendLoadingMessage() {
-        const id = "loading-" + Date.now();
-        const wrapper = document.createElement("div");
-        wrapper.className = "msg-wrapper assistant";
-        wrapper.id = id;
-        wrapper.innerHTML = `
-            <div class="msg-avatar assistant">S</div>
-            <div class="msg-bubble" style="color: var(--text-secondary); font-style: italic;">
-                🔍 Sadigua está consultando precedentes, contrastando artículos y verificando anti-alucinaciones...
-            </div>
-        `;
-        chatMessages.appendChild(wrapper);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-        return id;
-    }
-
-    function appendAssistantMessage(data) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "msg-wrapper assistant";
-
-        // Insignia de grounding
-        const groundingBadge = data.grounded 
-            ? `<span class="badge badge-green" style="margin-bottom: 8px;">✓ Grounding Verificado en Corpus</span>`
-            : `<span class="badge" style="background: var(--warning-bg); color: var(--warning-text); margin-bottom: 8px;">⚠️ Advertencia: ${escapeHtml(data.grounding_status)}</span>`;
-
-        // Bloque de fuentes
-        let sourcesHtml = "";
-        if (data.sources && data.sources.length > 0) {
-            const listItems = data.sources.map(s => {
-                const label = s.articulo || s.section || "Norma";
-                return `<li class="citation-item">📄 ${escapeHtml(s.source)} — <strong>${escapeHtml(label)}</strong></li>`;
-            }).join("");
-            sourcesHtml = `
-                <div class="citations-box">
-                    <h5>Fuentes y Normas Recuperadas por RAG:</h5>
-                    <ul style="padding-left: 18px; margin: 0;">${listItems}</ul>
-                </div>
-            `;
-        }
-
-        wrapper.innerHTML = `
-            <div class="msg-avatar assistant">S</div>
-            <div class="msg-bubble">
-                ${groundingBadge}
-                <div>${formatResponseText(data.answer)}</div>
-                ${sourcesHtml}
-            </div>
         `;
         chatMessages.appendChild(wrapper);
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -252,11 +380,6 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
         chatMessages.appendChild(wrapper);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    function removeMessage(id) {
-        const el = document.getElementById(id);
-        if (el) el.remove();
     }
 
     // Eventos de envío de chat
@@ -711,10 +834,22 @@ document.addEventListener("DOMContentLoaded", () => {
     function formatResponseText(text) {
         if (!text) return "";
         let formatted = escapeHtml(text);
-        // Formatear negritas **texto**
+        // Títulos H4 (#### ...)
+        formatted = formatted.replace(/^#### (.*?)$/gm, '<h5 style="color: var(--primary-blue); margin: 12px 0 4px 0; font-size: 14px; font-weight: 700;">$1</h5>');
+        // Títulos H3 (### ...)
+        formatted = formatted.replace(/^### (.*?)$/gm, '<h4 style="color: var(--primary-blue); margin: 16px 0 8px 0; font-size: 15.5px; font-weight: 700; border-bottom: 1px solid #DBEAFE; padding-bottom: 4px;">$1</h4>');
+        // Separador horizontal (---)
+        formatted = formatted.replace(/^---$/gm, '<hr style="border: none; border-top: 1px dashed #CBD5E1; margin: 14px 0;">');
+        // Negritas (**texto**)
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        // Formatear listas con viñetas
+        // Cursivas (*texto*)
+        formatted = formatted.replace(/\*([^\*]+?)\*/g, '<em>$1</em>');
+        // Listas con viñetas (- ...)
         formatted = formatted.replace(/\n- (.*?)/g, '<br>• $1');
+        // Listas numeradas (1. ...)
+        formatted = formatted.replace(/\n(\d+)\. (.*?)/g, '<br><strong>$1.</strong> $2');
+        // Saltos de línea
+        formatted = formatted.replace(/\n\n/g, '<br><br>');
         return formatted;
     }
 
