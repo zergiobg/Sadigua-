@@ -60,4 +60,25 @@ python sadigua.py ingest
 python sadigua.py web
 ```
 
-La suite abrirá de inmediato en **`http://localhost:7837`** de forma 100% autónoma y sin conexión a internet.
+---
+
+## 💾 Método 4: Kit USB Portable (100% Offline con Modelos LLM Incluidos)
+
+Si deseas llevar Sadigua en una memoria USB o disco duro externo a un cliente, juzgado o servidor sin conexión a internet:
+
+### Cómo preparar tu memoria USB (desde tu equipo actual):
+1. Conecta tu memoria USB (se recomienda al menos 8 GB libres).
+2. Haz doble clic en [`PREPARAR_USB.bat`](./PREPARAR_USB.bat) o ejecuta:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\scripts\export_to_usb.ps1 -UsbDriveLetter E
+   ```
+   Esto copiará el código de Sadigua, los binarios de Ollama y los **4.7 GB del modelo Qwen 2.5** a la memoria USB.
+
+### Cómo instalarlo en el computador nuevo:
+1. Conecta la USB en el nuevo computador.
+2. Abre la USB y haz doble clic en **`INSTALAR_SADIGUA.bat`**.
+   - El instalador creará la carpeta (por defecto `C:\Sadigua`).
+   - Transferirá el modelo Qwen 2.5 a la caché local del nuevo equipo en ~30 segundos (**cero descargas de internet**).
+3. Abre **Antigravity** en `C:\Sadigua` y escribe en el chat:
+   > **`deploy Sadigua`**
+4. ¡Listo! El agente encenderá el motor y abrirá la suite en **`http://localhost:7837`**.
