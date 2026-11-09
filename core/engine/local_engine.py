@@ -53,11 +53,13 @@ class LocalEngine(BaseLLMEngine):
             "model": self.model,
             "messages": messages,
             "stream": False,
+            "keep_alive": -1,
             "options": {
                 "temperature": temperature,
                 "num_thread": self.num_threads,
-                "num_predict": max_tokens or 650,
-                "num_ctx": 4096
+                "num_predict": max_tokens or 450,
+                "num_ctx": 4096,
+                "use_mlock": True
             }
         }
 
@@ -90,11 +92,13 @@ class LocalEngine(BaseLLMEngine):
             "model": self.model,
             "messages": messages,
             "stream": True,
+            "keep_alive": -1,
             "options": {
                 "temperature": temperature,
                 "num_thread": self.num_threads,
-                "num_predict": max_tokens or 650,
-                "num_ctx": 4096
+                "num_predict": max_tokens or 450,
+                "num_ctx": 4096,
+                "use_mlock": True
             }
         }
 

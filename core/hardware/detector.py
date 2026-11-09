@@ -16,9 +16,12 @@ class HardwareProfiler:
         logical_cores = psutil.cpu_count(logical=True) or os.cpu_count() or 4
         physical_cores = psutil.cpu_count(logical=False) or max(1, logical_cores // 2)
 
-        # Asignar hilos óptimos para no saturar el sistema operativo
-        # Regla: Dejar 2 hilos libres para el SO y la interfaz si hay más de 4 hilos
-        if logical_cores > 4:
+        # Asignar hilos óptimos para procesadores híbridos Intel (P-cores + E-cores)
+        # En procesadores con 12+ hilos (como Intel Core Ultra), 8 hilos maximiza la velocidad
+        # evitando la latencia de sincronización de los núcleos LP-E del SoC.
+        if logical_cores >= 12:
+            optimal_threads = 8
+        elif logical_cores > 4:
             optimal_threads = max(2, logical_cores - 2)
         else:
             optimal_threads = max(1, logical_cores - 1)
