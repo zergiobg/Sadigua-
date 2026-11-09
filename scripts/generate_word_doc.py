@@ -9,6 +9,12 @@ from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
 
+# Importar o definir generador de diagrama final
+try:
+    from scripts.generate_diagram import create_final_architecture_diagram
+except ImportError:
+    from generate_diagram import create_final_architecture_diagram
+
 def set_cell_background(cell, fill_hex):
     """Establece el color de fondo de una celda de tabla."""
     tcPr = cell._tc.get_or_add_tcPr()
@@ -131,17 +137,24 @@ def build_sadigua_word_document():
     docs_dir = base_dir / "docs"
     docs_dir.mkdir(exist_ok=True)
 
-    # Convertir imagen con Pillow para asegurar compatibilidad total con python-docx
+    # 1. Asegurar imagen de referencia
     raw_img_path = Path("C:/Users/zergi/.gemini/antigravity/brain/e9abc4b0-b2f3-44ab-9f41-17ebe9a7ada9/.user_uploaded/media_1794187580755_b55785c7.jpg")
-    clean_img_path = docs_dir / "diagrama_referencia_etb.png"
-
-    if raw_img_path.exists():
+    ref_img_path = docs_dir / "diagrama_referencia_etb.png"
+    if raw_img_path.exists() and not ref_img_path.exists():
         try:
             im = Image.open(raw_img_path)
-            im.save(str(clean_img_path), "PNG")
-            print(f"[OK] Imagen convertida y guardada en: {clean_img_path}")
+            im.save(str(ref_img_path), "PNG")
+            print(f"[OK] Imagen de referencia convertida en: {ref_img_path}")
         except Exception as e:
-            print(f"[WARN] No se pudo convertir imagen: {e}")
+            print(f"[WARN] No se pudo convertir imagen de referencia: {e}")
+
+    # 2. Asegurar diagrama final generado
+    final_img_path = docs_dir / "diagrama_arquitectura_final_sadigua.png"
+    if not final_img_path.exists():
+        try:
+            create_final_architecture_diagram()
+        except Exception as e:
+            print(f"[WARN] Error al crear diagrama final: {e}")
 
     doc = Document()
 
@@ -161,7 +174,7 @@ def build_sadigua_word_document():
     r_pre = p_pre.add_run("INGENIERÍA DE SISTEMAS INTELIGENTES SOBERANOS")
     r_pre.font.size = Pt(11)
     r_pre.font.bold = True
-    r_pre.font.color.rgb = RGBColor(100, 116, 139) # Slate 500
+    r_pre.font.color.rgb = RGBColor(100, 116, 139)
     r_pre.font.name = "Calibri"
 
     p_title = doc.add_paragraph()
@@ -171,7 +184,7 @@ def build_sadigua_word_document():
     r_title = p_title.add_run("PROYECTO SADIGUA")
     r_title.font.size = Pt(32)
     r_title.font.bold = True
-    r_title.font.color.rgb = RGBColor(29, 78, 216) # Azul primario #1D4ED8
+    r_title.font.color.rgb = RGBColor(29, 78, 216)
     r_title.font.name = "Calibri"
 
     p_sub = doc.add_paragraph()
@@ -179,11 +192,11 @@ def build_sadigua_word_document():
     p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r_sub = p_sub.add_run(
         "ARQUITECTURA TÉCNICA INTEGRAL & PLAN MAESTRO DE INGENIERÍA\n"
-        "Desagregación del Modelo de Referencia Enterprise, RAG Híbrido Quirúrgico,\n"
-        "Memoria Relacional en Cerebro Obsidiano y Despliegue Autónomo Multi-Hardware"
+        "Desagregación del Modelo de Referencia Enterprise, Blueprints de Arquitectura,\n"
+        "RAG Híbrido Quirúrgico, Memoria en Cerebro Obsidiano y Despliegue Multi-Hardware"
     )
     r_sub.font.size = Pt(13)
-    r_sub.font.color.rgb = RGBColor(51, 65, 85) # Slate 700
+    r_sub.font.color.rgb = RGBColor(51, 65, 85)
     r_sub.font.name = "Calibri"
 
     # Ficha Técnica en Portada
@@ -276,8 +289,8 @@ def build_sadigua_word_document():
     )
     p_d_intro.paragraph_format.line_spacing = 1.15
 
-    if clean_img_path.exists():
-        doc.add_picture(str(clean_img_path), width=Inches(6.2))
+    if ref_img_path.exists():
+        doc.add_picture(str(ref_img_path), width=Inches(6.2))
         p_cap = doc.add_paragraph("Figura 1: Arquitectura de Referencia Inicial — SLM Soberano + Agentes AI-First (ETB / TechCo).")
         p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p_cap.runs[0].font.italic = True
@@ -521,11 +534,55 @@ def build_sadigua_word_document():
     create_styled_table(doc, headers_mat, data_mat, [Inches(1.8), Inches(1.1), Inches(1.8), Inches(1.8)])
 
     # -------------------------------------------------------------------------
-    # SECCIÓN 5: BENCHMARK Y EFICIENCIA VS GPTS ENTERPRISE
+    # SECCIÓN 5: DIAGRAMA DE ARQUITECTURA FINAL IMPLEMENTADA EN SADIGUA
     # -------------------------------------------------------------------------
     doc.add_page_break()
-    h5 = doc.add_heading("5. Indicadores de Eficiencia, Latencia y Benchmark vs. GPTs Enterprise", level=1)
+    h5 = doc.add_heading("5. Diagrama de Arquitectura Final Implementada en Sadigua", level=1)
     h5.runs[0].font.color.rgb = RGBColor(29, 78, 216)
+
+    p_final_intro = doc.add_paragraph(
+        "A continuación se presenta el Blueprint y Diagrama de Arquitectura Final de Sadigua, "
+        "reflejando exactamente la topología construida, los microservicios activos y el desacoplamiento "
+        "total entre la interfaz gráfica, el gateway perimetral con escudo PII, el orquestador cognitivo, "
+        "el motor de inferencia local en CPU, la memoria en Markdown de Obsidian y el pipeline RAG híbrido:"
+    )
+    p_final_intro.paragraph_format.line_spacing = 1.15
+
+    # Insertar Imagen de la Arquitectura Final
+    if final_img_path.exists():
+        doc.add_picture(str(final_img_path), width=Inches(6.3))
+        p_cap2 = doc.add_paragraph("Figura 2: Arquitectura Final Implementada — Sadigua: SLM Soberano + Agentes Desacoplados.")
+        p_cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_cap2.runs[0].font.italic = True
+        p_cap2.runs[0].font.size = Pt(8.5)
+        p_cap2.runs[0].font.color.rgb = RGBColor(100, 116, 139)
+
+    doc.add_heading("5.1. Análisis del Flujo de Ejecución End-to-End", level=2)
+    p_flow = doc.add_paragraph(
+        "El diagrama final ilustra el ciclo de vida de una consulta institucional a través de las 6 capas operativas:\n\n"
+        "1. Canales Omnicanal (Capa 1): El usuario ingresa su consulta desde la Web SPA (puerto 7837), un webhook de WhatsApp "
+        "o la consola interna. La interfaz web cumple estrictamente la directriz de paleta clara (azul, gris, blanco, cero dark mode).\n"
+        "2. Gateway Perimetral & PII Shield (Capa 2): La petición arriba a FastAPI en gateway/api.py. Si contiene cédulas, "
+        "correos o teléfonos colombianos, el módulo PIIAnonymizer los sustituye por pseudónimos reversibles ([ID_xxxx]) "
+        "antes de que toquen el orquestador. Asimismo, la compuerta Air-Gap Gate verifica que no haya filtraciones a la nube.\n"
+        "3. Orquestador Cognitivo (Capa 3): SadiguaOrchestrator descompone la consulta y determina si requiere fundamentación documental.\n"
+        "4. Pipeline RAG Híbrido Quirúrgico (Capa 4 & 5): Consulta de forma simultánea el índice léxico BM25 y el almacén vectorial "
+        "denso (LocalVectorStore), aplicando fusión recíproca de rangos (RRF k=60) y reranking neuronal. Los fragmentos provienen "
+        "de documentos indexados jerárquicamente por Libro, Título y Artículo.\n"
+        "5. Inferencia Local y Grounding (Capa 3 & 4): El motor Ollama ejecuta el modelo Qwen 2.5 en CPU con instrucciones AVX2. "
+        "El texto resultante es auditado en tiempo real por el GroundingValidator: si contiene citas normativas inexistentes, "
+        "el Human-in-the-Loop emite una alerta de alucinación inmediata.\n"
+        "6. Memoria Persistente (Capa 4): La interacción se indexa en la Bóveda de Obsidian (vault/) en archivos Markdown abiertos "
+        "con YAML frontmatter y enlaces [[wiki]], permitiendo auditoría humana directa sin bases de datos propietarias."
+    )
+    p_flow.paragraph_format.line_spacing = 1.15
+
+    # -------------------------------------------------------------------------
+    # SECCIÓN 6: BENCHMARK Y EFICIENCIA VS GPTS ENTERPRISE
+    # -------------------------------------------------------------------------
+    doc.add_page_break()
+    h6 = doc.add_heading("6. Indicadores de Eficiencia, Latencia y Benchmark vs. GPTs Enterprise", level=1)
+    h6.runs[0].font.color.rgb = RGBColor(29, 78, 216)
 
     p_bench_desc = doc.add_paragraph(
         "Uno de los mitos más arraigados en el sector tecnológico es que la Inteligencia Artificial de alto impacto "
@@ -561,11 +618,11 @@ def build_sadigua_word_document():
     )
 
     # -------------------------------------------------------------------------
-    # SECCIÓN 6: AUTODETECCIÓN Y RECONFIGURACIÓN DE HARDWARE
+    # SECCIÓN 7: AUTODETECCIÓN Y RECONFIGURACIÓN DE HARDWARE
     # -------------------------------------------------------------------------
     doc.add_page_break()
-    h6 = doc.add_heading("6. Autodetección y Reconfiguración Dinámica de Hardware", level=1)
-    h6.runs[0].font.color.rgb = RGBColor(29, 78, 216)
+    h7 = doc.add_heading("7. Autodetección y Reconfiguración Dinámica de Hardware", level=1)
+    h7.runs[0].font.color.rgb = RGBColor(29, 78, 216)
 
     p_hw_q = doc.add_paragraph(
         "Ante la pregunta fundamental: ¿Si Sadigua se traslada a otro equipo, servidor o estación de trabajo, "
@@ -603,13 +660,13 @@ def build_sadigua_word_document():
     p_hw_tuning.paragraph_format.line_spacing = 1.15
 
     # -------------------------------------------------------------------------
-    # SECCIÓN 7: GUÍA DE DESPLIEGUE, ANTIGRAVITY Y KIT USB PORTABLE
+    # SECCIÓN 8: GUÍA DE DESPLIEGUE, ANTIGRAVITY Y KIT USB PORTABLE
     # -------------------------------------------------------------------------
     doc.add_page_break()
-    h7 = doc.add_heading("7. Guía Paso a Paso de Despliegue, Antigravity y Kit USB Portable", level=1)
-    h7.runs[0].font.color.rgb = RGBColor(29, 78, 216)
+    h8 = doc.add_heading("8. Guía Paso a Paso de Despliegue, Antigravity y Kit USB Portable", level=1)
+    h8.runs[0].font.color.rgb = RGBColor(29, 78, 216)
 
-    doc.add_heading("7.1. El Comando Mágico de Antigravity: 'deploy Sadigua'", level=2)
+    doc.add_heading("8.1. El Comando Mágico de Antigravity: 'deploy Sadigua'", level=2)
     p_deploy_cmd = doc.add_paragraph(
         "Para transformar la instalación en una experiencia totalmente desatendida y 'cero fricción', se integró la "
         "habilidad oficial en .agents/skills/deploy-sadigua/SKILL.md y la regla de activación inmediata en GEMINI.md. "
@@ -625,7 +682,7 @@ def build_sadigua_word_document():
     )
     p_deploy_cmd.paragraph_format.line_spacing = 1.15
 
-    doc.add_heading("7.2. Kit USB Portable (100% Desconectado con Modelos Incluidos)", level=2)
+    doc.add_heading("8.2. Kit USB Portable (100% Desconectado con Modelos Incluidos)", level=2)
     p_usb_detail = doc.add_paragraph(
         "Para responder a la necesidad de trasladar Sadigua físicamente a juzgados, entidades públicas o despachos "
         "aislados de internet, se diseñó la solución de despliegue en memoria USB:\n\n"
@@ -644,7 +701,7 @@ def build_sadigua_word_document():
     )
     p_usb_detail.paragraph_format.line_spacing = 1.15
 
-    doc.add_heading("7.3. Comando de Sincronización Dual: 'python sadigua.py sync'", level=2)
+    doc.add_heading("8.3. Comando de Sincronización Dual: 'python sadigua.py sync'", level=2)
     p_sync_detail = doc.add_paragraph(
         "Para mantener actualizadas todas las instancias sin duplicar manualmente los archivos ni colapsar los repositorios "
         "con los archivos pesados de los modelos, se creó el comando unificado:\n\n"
@@ -658,11 +715,11 @@ def build_sadigua_word_document():
     p_sync_detail.paragraph_format.line_spacing = 1.15
 
     # -------------------------------------------------------------------------
-    # SECCIÓN 8: CONCLUSIONES Y ESTADO OPERATIVO
+    # SECCIÓN 9: CONCLUSIONES Y ESTADO OPERATIVO
     # -------------------------------------------------------------------------
     doc.add_page_break()
-    h8 = doc.add_heading("8. Conclusiones y Estado Operativo del Sistema", level=1)
-    h8.runs[0].font.color.rgb = RGBColor(29, 78, 216)
+    h9 = doc.add_heading("9. Conclusiones y Estado Operativo del Sistema", level=1)
+    h9.runs[0].font.color.rgb = RGBColor(29, 78, 216)
 
     p_final = doc.add_paragraph(
         "El proyecto Sadigua marca un hito en la ingeniería de Inteligencia Artificial Soberana en Colombia e Hispanoamérica. "
