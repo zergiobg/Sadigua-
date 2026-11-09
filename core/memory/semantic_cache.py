@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import time
 from pathlib import Path
@@ -6,6 +7,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from config.settings import settings
 from core.rag.embeddings import EmbeddingManager
 from core.memory.vault_manager import ObsidianVaultManager
+from core.memory.concept_normalizer import LegalConceptNormalizer
 
 class SemanticPrecedentCache:
     """
@@ -31,7 +33,7 @@ class SemanticPrecedentCache:
         self._load_index()
 
     def _load_index(self):
-        """Carga el índice de embeddings de consultas previas desde disco."""
+        """Carga el índice de precedentes desde disco y sincroniza con notas existentes en Bóveda."""
         if self.index_file.exists():
             try:
                 self.entries = json.loads(self.index_file.read_text(encoding="utf-8"))
@@ -39,6 +41,98 @@ class SemanticPrecedentCache:
                 self.entries = []
         else:
             self.entries = []
+        self._sync_with_vault()
+
+    def _sync_with_vault(self):
+        """Sincroniza el índice en memoria con todas las notas en vault/consultas/"""
+        if not self.cache_dir.exists():
+            return
+
+        # Filtrar entradas huérfanas que no existan en disco
+        valid_entries = []
+        for e in self.entries:
+            nid = e.get("note_id", "")
+            if nid:
+                safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', nid) + ".md"
+                if (self.cache_dir / safe_name).exists() or (self.cache_dir / (nid + ".md")).exists():
+                    valid_entries.append(e)
+        self.entries = valid_entries
+
+        indexed_ids = {e.get("note_id") for e in self.entries if e.get("note_id")}
+
+        added = False
+        for md_file in self.cache_dir.glob("*.md"):
+            note_id = md_file.stem
+            if note_id not in indexed_ids:
+                note = self.vault.get_note("consultas", note_id)
+                if note:
+                    meta = note.get("metadata", {})
+                    query = meta.get("query")
+                    if query:
+                        content = note.get("content", "")
+                        self.entries.append({
+                            "note_id": note_id,
+                            "query": query,
+                            "embedding": [],
+                            "answer": content,
+                            "sources": meta.get("sources", []),
+                            "grounding_status": meta.get("grounding_status", "✓ Precedente Verificado en Bóveda"),
+                            "created_at": meta.get("created_at", ""),
+                            "cartridge": meta.get("cartridge", "legal_co")
+                        })
+                        indexed_ids.add(note_id)
+                        added = True
+        if added or len(valid_entries) != len(self.entries):
+            self._save_index()
+
+    def find_candidate_precedent(self, query: str, threshold: float = 0.62) -> Optional[Dict[str, Any]]:
+        """
+        Interpreta conceptualmente la consulta entrante y busca precedentes de alta afinidad
+        en el Cerebro Obsidiano utilizando LegalConceptNormalizer.
+        Retorna los datos para la Antesala Interactiva ('¿Quisiste preguntar que...?')
+        """
+        self._sync_with_vault()
+        if not self.entries:
+            return None
+
+        import re
+        best_entry = None
+        best_score = 0.0
+
+        for entry in self.entries:
+            entry_query = entry.get("query", "")
+            if not entry_query:
+                continue
+
+            # Similitud conceptual normalizada
+            score = LegalConceptNormalizer.similarity(query, entry_query)
+            if score > best_score:
+                best_score = score
+                best_entry = entry
+
+        if best_entry and best_score >= threshold:
+            answer_content = best_entry.get("answer")
+            if not answer_content:
+                note = self.vault.get_note("consultas", best_entry["note_id"])
+                answer_content = note.get("content", "") if note else ""
+
+            # Extraer extracto breve para previsualización
+            preview_clean = re.sub(r'#+\s*', '', answer_content[:240]).strip()
+
+            return {
+                "found": True,
+                "matched_query": best_entry["query"],
+                "note_id": best_entry["note_id"],
+                "similarity": best_score,
+                "confidence_pct": int(best_score * 100),
+                "answer": answer_content,
+                "preview": preview_clean,
+                "sources": best_entry.get("sources", []),
+                "grounding_status": best_entry.get("grounding_status", "✓ Precedente Verificado en Bóveda"),
+                "created_at": best_entry.get("created_at", "")
+            }
+
+        return None
 
     def _save_index(self):
         """Persiste el índice de embeddings en disco."""

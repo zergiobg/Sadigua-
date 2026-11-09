@@ -185,7 +185,7 @@ class SadiguaOrchestrator:
             "note_id": note_path.stem
         }
 
-    async def answer_progressive_stream(self, user_query: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def answer_progressive_stream(self, user_query: str, skip_cache: bool = False) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Generador Asíncrono de Respuestas Progresivas en Ondas con Blindaje Anti-Truncamiento.
         - Onda 1: Dictamen y Fundamento Inmediato (Tokens en streaming con límite generoso).
@@ -194,30 +194,31 @@ class SadiguaOrchestrator:
         - Auto-Continuation Guard en Onda 2 si la recomendación no concluye en punto.
         - Grounding final y Archivo de Precedente en Bóveda.
         """
-        # Fase 1: Caché Semántico de Precedentes
-        yield {
-            "type": "phase",
-            "phase": "precedent_check",
-            "message": "Consultando Bóveda de Precedentes en Memoria Obsidiana...",
-            "progress": 10
-        }
-
-        cached = await self.semantic_cache.check_precedent(user_query)
-        if cached:
-            self.memory.add_user_message(user_query)
-            self.memory.add_assistant_message(cached["answer"], citations=[])
+        # Fase 1: Caché Semántico de Precedentes (si no se solicita omitir)
+        if not skip_cache:
             yield {
-                "type": "precedent_hit",
-                "matched_query": cached["matched_query"],
-                "similarity": cached["similarity"],
-                "answer": cached["answer"],
-                "sources": cached["sources"],
-                "grounding_status": f"✓ Precedente Verificado en Bóveda (Match {cached['similarity']*100:.0f}%)",
-                "note_id": cached["note_id"],
-                "progress": 100
+                "type": "phase",
+                "phase": "precedent_check",
+                "message": "Consultando Bóveda de Precedentes en Memoria Obsidiana...",
+                "progress": 10
             }
-            yield {"type": "done", "note_id": cached["note_id"]}
-            return
+
+            cached = await self.semantic_cache.check_precedent(user_query)
+            if cached:
+                self.memory.add_user_message(user_query)
+                self.memory.add_assistant_message(cached["answer"], citations=[])
+                yield {
+                    "type": "precedent_hit",
+                    "matched_query": cached["matched_query"],
+                    "similarity": cached["similarity"],
+                    "answer": cached["answer"],
+                    "sources": cached["sources"],
+                    "grounding_status": f"✓ Precedente Verificado en Bóveda (Match {cached['similarity']*100:.0f}%)",
+                    "note_id": cached["note_id"],
+                    "progress": 100
+                }
+                yield {"type": "done", "note_id": cached["note_id"]}
+                return
 
         # Fase 2: Recuperación RAG Híbrida
         yield {
@@ -296,22 +297,24 @@ class SadiguaOrchestrator:
             "REGLAS CRÍTICAS DE REDACCIÓN:\n"
             "- Redacta en prosa jurídica profesional, fluida y argumentada.\n"
             "- Concluye la Onda 1 al terminar la subsunción jurídica con una oración completa y punto final.\n"
-            "- NO inicies la sección de ruta procesal, acciones ni memoriales aquí (serán abordados en la Onda 2).\n"
+            "- PROHIBIDO incluir secciones de 'Conclusión', 'Recomendación Práctica' o 'Ruta Procesal' en esta entrega (se desarrollarán detalladamente a continuación en la Onda 2).\n"
+            "- Finaliza esta primera parte tras la subsunción con punto final definitivo.\n"
             "- NUNCA dejes oraciones inconclusas."
         )
 
         wave_1_text = ""
+        system_p1 = f"{self.system_prompt}\n\nATENCIÓN: En esta entrega inmediata genera únicamente el Veredicto, Fundamento y Subsunción Jurídica. No agregues conclusiones ni rutas procesales anticipadas."
         try:
             async for token in self.llm.stream(
                 prompt=prompt_wave_1,
-                system_prompt=self.system_prompt,
+                system_prompt=system_p1,
                 temperature=0.1,
                 max_tokens=1500  # Presupuesto amplio para evitar truncamientos
             ):
                 wave_1_text += token
                 yield {"type": "token", "wave": 1, "text": token}
         except Exception as e:
-            wave_1_text = await self.llm.generate(prompt=prompt_wave_1, system_prompt=self.system_prompt, max_tokens=1500)
+            wave_1_text = await self.llm.generate(prompt=prompt_wave_1, system_prompt=system_p1, max_tokens=1500)
             yield {"type": "token", "wave": 1, "text": wave_1_text}
 
         # Guardián Anti-Truncamiento: Onda 1
@@ -332,7 +335,7 @@ class SadiguaOrchestrator:
             try:
                 async for token in self.llm.stream(
                     prompt=prompt_c1,
-                    system_prompt=self.system_prompt,
+                    system_prompt="Eres un corrector y redactor jurídico de alta precisión. Tu único objetivo es completar la frase interrumpida y cerrar con punto final.",
                     temperature=0.0,
                     max_tokens=300
                 ):
@@ -340,6 +343,10 @@ class SadiguaOrchestrator:
                     yield {"type": "token", "wave": 1, "text": token}
             except Exception:
                 pass
+
+        if wave_1_text and not wave_1_text.strip().endswith((".", "!", "?", "”", "»", ")", "]")):
+            wave_1_text += "."
+            yield {"type": "token", "wave": 1, "text": "."}
 
         yield {
             "type": "phase",
@@ -407,7 +414,7 @@ class SadiguaOrchestrator:
             try:
                 async for token in self.llm.stream(
                     prompt=prompt_c2,
-                    system_prompt=self.system_prompt,
+                    system_prompt="Eres un litigante y redactor jurídico de alta precisión. Tu único objetivo es completar la frase y cerrar con punto final.",
                     temperature=0.0,
                     max_tokens=400
                 ):
@@ -415,6 +422,10 @@ class SadiguaOrchestrator:
                     yield {"type": "token", "wave": 2, "text": token}
             except Exception:
                 pass
+
+        if wave_2_text and not wave_2_text.strip().endswith((".", "!", "?", "”", "»", ")", "]")):
+            wave_2_text += "."
+            yield {"type": "token", "wave": 2, "text": "."}
 
         yield {
             "type": "phase",

@@ -30,7 +30,7 @@ class Settings(BaseModel):
 
     # Gemini (Cloud)
     GEMINI_API_KEY: str = Field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
-    GEMINI_MODEL: str = Field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
+    GEMINI_MODEL: str = Field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-3.8-flash"))
 
     # Local (Ollama / Llama.cpp)
     LOCAL_BASE_URL: str = Field(default_factory=lambda: os.getenv("LOCAL_BASE_URL", "http://localhost:11434/v1"))

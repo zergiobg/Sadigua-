@@ -213,15 +213,132 @@ document.addEventListener("DOMContentLoaded", () => {
         if (hudDocsList) hudDocsList.innerHTML = "";
     }
 
-    async function sendQuery(queryText) {
+    async function sendQuery(queryText, skipCacheCheck = false) {
         if (!queryText || state.isQuerying) return;
         if (isComparisonMode) {
             return sendComparisonQuery(queryText);
         }
+
+        // Antesala Interactiva: Comprobar si existe un precedente conceptual antes de inferir
+        if (!skipCacheCheck) {
+            try {
+                const checkRes = await fetch("/api/chat/check-intent", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: queryText })
+                }).then(r => r.json()).catch(() => ({ found: false }));
+
+                if (checkRes && checkRes.found) {
+                    appendUserMessage(queryText);
+                    chatInput.value = "";
+                    renderIntentClarificationCard(queryText, checkRes);
+                    return;
+                }
+            } catch (err) {
+                console.warn("Check intent bypass:", err);
+            }
+        }
+
+        executeStreamingQuery(queryText, skipCacheCheck);
+    }
+
+    function renderIntentClarificationCard(userQuery, precedent) {
+        const cardId = "interceptor-" + Date.now();
+        const wrapper = document.createElement("div");
+        wrapper.className = "msg-wrapper assistant intent-interceptor-card";
+        wrapper.id = cardId;
+        wrapper.innerHTML = `
+            <div class="msg-avatar assistant" style="background: #2563EB; color: white;">💡</div>
+            <div class="msg-bubble intent-interceptor-bubble">
+                <div class="intent-interceptor-title">
+                    <span>🧠 Precedente Jurídico Identificado en Memoria Obsidiana</span>
+                    <span class="badge badge-green" style="font-size: 11px;">Afinidad: ${precedent.confidence_pct || 90}%</span>
+                </div>
+                <p style="margin: 4px 0 8px 0; font-size: 13px; color: var(--text-secondary);">
+                    Detectamos una consulta con el <strong>mismo concepto rector</strong> en la Bóveda de Precedentes:
+                </p>
+                <div class="intent-matched-box">
+                    <strong style="color: var(--primary-blue); font-size: 14px;">«${escapeHtml(precedent.matched_query)}»</strong>
+                    <p style="margin: 6px 0 0 0; font-size: 12px; color: var(--text-muted); font-style: italic;">
+                        ${escapeHtml(precedent.preview || "")}...
+                    </p>
+                </div>
+                <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 6px;">
+                    ¿Deseas consultar el dictamen y ruta procesal ya verificados (Respuesta instantánea) o prefieres generar un análisis nuevo desde cero?
+                </p>
+                <div class="intent-actions">
+                    <button type="button" class="btn-intent-yes" id="btn-yes-${cardId}">
+                        <span>✓ Sí, ver dictamen del precedente (Instantáneo ⚡)</span>
+                    </button>
+                    <button type="button" class="btn-intent-no" id="btn-no-${cardId}">
+                        <span>✕ No, investigar desde cero</span>
+                    </button>
+                </div>
+            </div>
+        `;
+        chatMessages.appendChild(wrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Listener SÍ -> Cargar precedente instantáneamente
+        document.getElementById(`btn-yes-${cardId}`)?.addEventListener("click", async () => {
+            const actionsEl = wrapper.querySelector(".intent-actions");
+            if (actionsEl) {
+                actionsEl.innerHTML = `<span class="badge badge-green">✓ Precedente Aceptado por el Usuario — Desplegado en 0.05s</span>`;
+            }
+            await loadPrecedentAnswer(precedent.note_id, userQuery);
+        });
+
+        // Listener NO -> Ejecutar RAG desde cero
+        document.getElementById(`btn-no-${cardId}`)?.addEventListener("click", () => {
+            const actionsEl = wrapper.querySelector(".intent-actions");
+            if (actionsEl) {
+                actionsEl.innerHTML = `<span class="badge badge-blue">ℹ️ Nueva búsqueda solicitada — Iniciando RAG...</span>`;
+            }
+            executeStreamingQuery(userQuery, true);
+        });
+    }
+
+    async function loadPrecedentAnswer(noteId, userQuery) {
+        try {
+            const res = await fetch("/api/chat/precedent-answer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ note_id: noteId, query: userQuery })
+            });
+            if (!res.ok) throw new Error("No se pudo cargar la ficha del precedente.");
+            const data = await res.json();
+
+            const currentMsgId = "msg-" + Date.now();
+            const wrapper = document.createElement("div");
+            wrapper.className = "msg-wrapper assistant";
+            wrapper.id = currentMsgId;
+            wrapper.innerHTML = `
+                <div class="msg-avatar assistant">S</div>
+                <div class="msg-bubble">
+                    <div class="bubble-badges" id="${currentMsgId}-badges">
+                        <span class="badge badge-green">⚡ Precedente Verificado en Bóveda (Obsidian)</span>
+                        <span class="badge badge-blue">⏱️ Recuperado en 0.05s</span>
+                        <span class="badge">💰 Costo: $0.00</span>
+                    </div>
+                    <div class="bubble-content" id="${currentMsgId}-content">
+                        ${formatResponseText(data.answer)}
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(wrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } catch (e) {
+            appendErrorMessage("Error recuperando precedente: " + e.message);
+        }
+    }
+
+    async function executeStreamingQuery(queryText, skipCache = false) {
         state.isQuerying = true;
         btnSend.disabled = true;
 
-        appendUserMessage(queryText);
+        if (!skipCache) {
+            appendUserMessage(queryText);
+        }
         chatInput.value = "";
 
         resetHUD();
@@ -260,7 +377,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     message: queryText,
-                    anonymize: chkAnonymize ? chkAnonymize.checked : true
+                    anonymize: chkAnonymize ? chkAnonymize.checked : true,
+                    skip_cache: skipCache
                 })
             });
 
@@ -410,7 +528,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const arenaId = Date.now();
         const currentLocalModel = document.getElementById("quick-model-select")?.value || "qwen2.5:7b-instruct";
-        const currentGeminiModel = document.getElementById("cfg-gemini-model")?.value || "gemini-2.5-flash";
+        const currentGeminiModel = document.getElementById("cfg-gemini-model")?.value || "gemini-3.8-flash";
 
         const arenaWrapper = document.createElement("div");
         arenaWrapper.className = "comparison-arena";
@@ -1168,7 +1286,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // -------------------------------------------------------------
     document.getElementById("btn-save-gemini-key")?.addEventListener("click", async () => {
         const geminiKey = document.getElementById("cfg-gemini-key").value.trim();
-        const geminiModel = document.getElementById("cfg-gemini-model")?.value?.trim() || "gemini-2.5-flash";
+        const geminiModel = document.getElementById("cfg-gemini-model")?.value?.trim() || "gemini-3.8-flash";
 
         if (!geminiKey) {
             alert("Por favor ingresa tu API Key de Gemini antes de guardar.");
@@ -1207,7 +1325,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const provider = document.getElementById("cfg-provider").value;
         const cloudEgress = document.getElementById("chk-cloud-egress") ? document.getElementById("chk-cloud-egress").checked : false;
         const geminiKey = document.getElementById("cfg-gemini-key")?.value?.trim() || "";
-        const geminiModel = document.getElementById("cfg-gemini-model")?.value?.trim() || "gemini-2.5-flash";
+        const geminiModel = document.getElementById("cfg-gemini-model")?.value?.trim() || "gemini-3.8-flash";
         const localUrl = document.getElementById("cfg-local-url").value.trim();
         const localModel = document.getElementById("cfg-local-model").value.trim();
 

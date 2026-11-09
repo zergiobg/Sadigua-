@@ -67,7 +67,7 @@ def test_api_vault_consultas():
 def test_api_chat_progressive():
     from unittest.mock import patch
 
-    async def mock_stream(query):
+    async def mock_stream(query, **kwargs):
         yield {"type": "phase", "phase": "wave_1_start", "message": "Iniciando"}
         yield {"type": "token", "wave": 1, "text": "Prueba"}
         yield {"type": "done"}

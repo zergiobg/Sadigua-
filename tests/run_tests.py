@@ -26,6 +26,13 @@ from tests.test_progressive_and_cache import (
 )
 from tests.test_thought_completion import test_thought_completion_detector
 from tests.test_gemini_comparison_endpoint import run_tests as test_gemini_comparison_endpoint
+from tests.test_concept_normalizer import (
+    test_legal_concept_normalization,
+    test_user_screenshot_four_questions_similarity,
+    test_semantic_cache_precedent_candidate_interceptor,
+    test_api_check_intent_endpoint,
+    test_api_precedent_answer_endpoint
+)
 
 def run_all():
     tests = [
@@ -38,6 +45,9 @@ def run_all():
         ("Caché Semántico de Precedentes (Similitud Coseno)", test_semantic_precedent_cache),
         ("Orquestador Progresivo Multi-Onda & Telemetría", test_progressive_stream_orchestrator),
         ("Guardián Anti-Truncamiento & Cierre de Ideas", test_thought_completion_detector),
+        ("Normalizador Conceptual & Afinidades Jurídicas", test_legal_concept_normalization),
+        ("Similitud 4 Preguntas Críticas del Usuario (Screenshot)", test_user_screenshot_four_questions_similarity),
+        ("Candidato Precedente & Interceptor Semántico", test_semantic_cache_precedent_candidate_interceptor),
         ("API REST: Estado del Sistema & Health", test_api_health_and_status),
         ("API REST: Servidor Web Estático (HTML/CSS/JS)", test_api_static_web_serving),
         ("API REST: Gestión de Cartuchos y Documentos", test_api_cartridges_and_docs),
@@ -45,6 +55,8 @@ def run_all():
         ("API REST: Catálogo de Precedentes / Consultas", test_api_vault_consultas),
         ("API REST: Endpoint Streaming SSE Progresivo", test_api_chat_progressive),
         ("API REST: Endpoint Streaming SSE Gemini Comparativo", test_gemini_comparison_endpoint),
+        ("API REST: Endpoint Interceptor de Intención (/api/chat/check-intent)", test_api_check_intent_endpoint),
+        ("API REST: Endpoint Respuesta Inmediata de Precedente (/api/chat/precedent-answer)", test_api_precedent_answer_endpoint),
     ]
 
     passed = 0

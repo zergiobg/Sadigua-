@@ -34,7 +34,7 @@ def test_gemini_stream_without_key_reports_informative_sse():
 def test_update_gemini_config_in_mlops():
     payload = {
         "gemini_api_key": "AIzaSyTestMockKeyForPedagogicalComparison12345",
-        "gemini_model": "gemini-2.5-flash"
+        "gemini_model": "gemini-3.8-flash"
     }
     res = client.post("/api/system/config", json=payload)
     assert res.status_code == 200

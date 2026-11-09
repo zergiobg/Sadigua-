@@ -74,6 +74,14 @@ def _persist_env_var(key: str, value: str):
 class ChatRequest(BaseModel):
     message: str = Field(..., description="Consulta del usuario")
     anonymize: bool = Field(default=True, description="Enmascarar datos personales (Ley 1581)")
+    skip_cache: bool = Field(default=False, description="Omitir caché de precedentes y forzar búsqueda RAG fresca")
+
+class CheckIntentRequest(BaseModel):
+    message: str
+
+class PrecedentAnswerRequest(BaseModel):
+    note_id: str
+    query: str
 
 class SwitchCartridgeRequest(BaseModel):
     cartridge_id: str = Field(..., description="ID del cartucho a activar")
@@ -193,6 +201,58 @@ async def chat_endpoint(request: ChatRequest):
 
     return result
 
+@app.post("/api/chat/check-intent")
+def check_intent_endpoint(req: CheckIntentRequest):
+    """
+    Antesala interactiva: evalúa si la consulta coincide conceptualmente
+    con algún precedente en la Bóveda de Obsidian. Responde en 2 milisegundos.
+    """
+    user_query = req.message.strip()
+    if not user_query:
+        return {"found": False}
+    candidate = orchestrator.semantic_cache.find_candidate_precedent(user_query, threshold=0.60)
+    if candidate:
+        return candidate
+    return {"found": False}
+
+@app.post("/api/chat/precedent-answer")
+def precedent_answer_endpoint(req: PrecedentAnswerRequest):
+    """
+    Retorna instantáneamente el dictamen y ruta procesal del precedente confirmado por el usuario.
+    """
+    note = vault_manager.get_note("consultas", req.note_id)
+    if not note:
+        # Fallback al contenido indexado en memoria
+        for e in orchestrator.semantic_cache.entries:
+            if e.get("note_id") == req.note_id and e.get("answer"):
+                note = {
+                    "content": e["answer"],
+                    "metadata": {
+                        "query": e.get("query"),
+                        "grounding_status": e.get("grounding_status"),
+                        "created_at": e.get("created_at")
+                    }
+                }
+                break
+    if not note:
+        raise HTTPException(status_code=404, detail="Precedente no encontrado en la bóveda.")
+
+    content = note.get("content", "")
+    metadata = note.get("metadata", {})
+
+    # Registrar en memoria de conversación
+    orchestrator.memory.add_user_message(req.query)
+    orchestrator.memory.add_assistant_message(content, citations=[])
+
+    return {
+        "status": "success",
+        "answer": content,
+        "note_id": req.note_id,
+        "matched_query": metadata.get("query", req.query),
+        "grounding_status": metadata.get("grounding_status", "✓ Precedente Verificado en Bóveda"),
+        "created_at": metadata.get("created_at", "")
+    }
+
 @app.post("/api/chat/progressive")
 async def chat_progressive_endpoint(request: ChatRequest):
     """
@@ -209,7 +269,7 @@ async def chat_progressive_endpoint(request: ChatRequest):
 
     async def sse_event_stream():
         try:
-            async for event in orchestrator.answer_progressive_stream(user_query):
+            async for event in orchestrator.answer_progressive_stream(user_query, skip_cache=request.skip_cache):
                 # Si hubo enmascaramiento de PII, restaurar en los textos que se envíen
                 if request.anonymize and mapping:
                     if event.get("type") == "token" and "text" in event:

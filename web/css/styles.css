@@ -1139,3 +1139,84 @@ body {
 .comparison-table tr:hover {
     background: #F1F5F9;
 }
+
+/* -------------------------------------------------------------
+   ANTESALA INTERACTIVA DE PRECEDENTES (HUMAN-IN-THE-LOOP)
+   ------------------------------------------------------------- */
+.intent-interceptor-card {
+    animation: fadeIn 0.3s ease;
+    max-width: 90% !important;
+}
+
+.intent-interceptor-bubble {
+    background: #EFF6FF !important;
+    border: 2px solid #3B82F6 !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.15) !important;
+    padding: 16px 18px !important;
+}
+
+.intent-interceptor-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: var(--primary-blue);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.intent-matched-box {
+    background: #FFFFFF;
+    border: 1px solid #BFDBFE;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 8px 0 12px 0;
+    border-left: 4px solid var(--primary-blue);
+}
+
+.intent-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.btn-intent-yes {
+    background: #1D4ED8;
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s ease;
+}
+
+.btn-intent-yes:hover {
+    background: #1E40AF;
+}
+
+.btn-intent-no {
+    background: #FFFFFF;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 16px;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-intent-no:hover {
+    border-color: #94A3B8;
+    color: var(--text-primary);
+}
