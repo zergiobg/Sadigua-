@@ -15,7 +15,7 @@ class ObsidianVaultManager:
 
     def __init__(self, vault_path: Optional[Path] = None):
         self.vault_path = vault_path or settings.VAULT_PATH
-        self.categories = ["expedientes", "clientes", "conceptos", "jurisprudencia", "consultas"]
+        self.categories = ["expedientes", "clientes", "conceptos", "jurisprudencia", "consultas", "minutas"]
         self._initialize_structure()
 
     def _initialize_structure(self):
@@ -118,18 +118,26 @@ class ObsidianVaultManager:
             if not d.exists():
                 continue
             cat_name = d.name
-            for file in d.glob("*.md"):
-                text = file.read_text(encoding="utf-8")
-                meta, content = self._parse_frontmatter_and_content(text)
-                results.append({
-                    "id": meta.get("id", file.stem),
-                    "title": meta.get("titulo", file.stem),
-                    "category": cat_name,
-                    "filename": file.name,
-                    "updated": meta.get("actualizado", ""),
-                    "snippet": content[:200] + "..." if len(content) > 200 else content
-                })
-        return results
+            for file in d.rglob("*.md"):
+                try:
+                    text = file.read_text(encoding="utf-8")
+                    meta, content = self._parse_frontmatter_and_content(text)
+                    results.append({
+                        "id": meta.get("id", file.stem),
+                        "title": meta.get("titulo", meta.get("title", file.stem)),
+                        "category": cat_name,
+                        "subcategory": meta.get("categoria", meta.get("categoria_id", "")),
+                        "tipo_accion": meta.get("tipo_accion", ""),
+                        "filename": file.name,
+                        "relative_path": str(file.relative_to(self.vault_path)),
+                        "updated": meta.get("actualizado", meta.get("created_at", "")),
+                        "tags": meta.get("tags", []),
+                        "entidad_accionada": meta.get("entidad_accionada", ""),
+                        "snippet": content[:220].strip().replace("\n", " ") + "..." if len(content) > 220 else content.strip()
+                    })
+                except Exception:
+                    continue
+        return sorted(results, key=lambda x: str(x.get("updated", "")), reverse=True)
 
     def record_precedent_mutation(self, mutation: Dict[str, Any]) -> Dict[str, Any]:
         """

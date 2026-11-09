@@ -132,6 +132,11 @@
                 </select>
             </div>
 
+            <button type="button" id="btn-open-memorial-modal" class="btn-compare-toggle" style="border-color: var(--bio-mint); color: var(--bio-mint);" title="Generador Inteligente de Minutas, Tutelas y Derechos de Petición">
+                <span class="compare-icon">📜</span>
+                <span>Minutas & Tutelas</span>
+            </button>
+
             <button type="button" id="btn-toggle-comparison" class="btn-compare-toggle" title="Dividir pantalla 50/50: Modelo Local vs Google Gemini">
                 <span class="compare-icon">⚖️</span>
                 <span id="compare-toggle-label">Comparar vs Gemini</span>
@@ -412,6 +417,7 @@
 
                     <!-- Sugerencias rápidas compactas -->
                     <div class="quick-prompts">
+                        <span class="prompt-pill" id="pill-quick-memorial" style="border-color: rgba(52, 232, 176, 0.4); color: var(--bio-mint); background: rgba(52, 232, 176, 0.08); font-weight: 600;">⚖️ Generador de Tutelas & Minutas</span>
                         <span class="prompt-pill" data-query="¿Cómo opera el juramento estimatorio según el artículo 206 del CGP?">⚖️ Juramento Estimatorio (Art. 206 CGP)</span>
                         <span class="prompt-pill" data-query="¿Cuáles son los principios para el tratamiento de datos y soberanía según la Ley 1581 y el Conpes 4144?">🔐 Soberanía de Datos y Ley 1581</span>
                         <span class="prompt-pill" data-query="¿Cuáles son los requisitos para decretar una medida cautelar innominada según el artículo 590 del CGP?">📋 Medidas Cautelares (Art. 590 CGP)</span>
@@ -458,21 +464,34 @@
                 <div class="view-header">
                     <div>
                         <h2>Cerebro Obsidiano — Memoria Persistente de Expedientes</h2>
-                        <p>Notas y precedentes en formato Markdown abierto con enlaces bidireccionales <code>[[wiki]]</code>.</p>
+                        <p>Notas, precedentes y minutas procesales en formato Markdown abierto con enlaces <code>[[wiki]]</code>.</p>
                         <p class="vault-path-hint">
                             📁 Carpeta local editable en Obsidian: <strong>C:\_dev\AI_BOCHICA\Cerebro\vault</strong>
                         </p>
                     </div>
-                    <button class="btn-primary" id="btn-new-note">+ Nueva Ficha / Nota</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-primary" id="btn-vault-open-memorial" style="background: linear-gradient(135deg, rgba(52, 232, 176, 0.2), rgba(0, 229, 255, 0.25)); border: 1px solid var(--bio-mint); color: #fff;">📜 Redactar Tutela / Minuta</button>
+                        <button class="btn-primary" id="btn-new-note">+ Nueva Ficha / Nota</button>
+                    </div>
+                </div>
+
+                <!-- BUSCADOR EN TIEMPO REAL DE BÓVEDA -->
+                <div class="vault-search-container" style="margin-bottom: 16px;">
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <span style="position: absolute; left: 14px; font-size: 16px; color: var(--bio-cyan); pointer-events: none;">🔍</span>
+                        <input type="text" id="vault-search-input" class="form-control" style="padding-left: 42px; padding-right: 36px; height: 42px; background: rgba(2, 11, 20, 0.75); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-md); color: var(--ice-white); width: 100%; font-size: 14px;" placeholder="Buscar en la memoria: palabra clave, derecho fundamental, tipo de tutela, entidad o radicado..." />
+                        <button id="btn-clear-vault-search" style="position: absolute; right: 12px; background: none; border: none; color: var(--text-muted); cursor: pointer; display: none; font-size: 14px;">✕</button>
+                    </div>
                 </div>
 
                 <div class="filter-bar">
                     <button class="filter-btn active" data-cat="all">Todos</button>
                     <button class="filter-btn" data-cat="consultas">⚡ Precedentes</button>
-                    <button class="filter-btn" data-cat="expedientes">Expedientes</button>
-                    <button class="filter-btn" data-cat="clientes">Clientes</button>
-                    <button class="filter-btn" data-cat="conceptos">Conceptos</button>
-                    <button class="filter-btn" data-cat="jurisprudencia">Jurisprudencia</button>
+                    <button class="filter-btn" data-cat="minutas">📜 Tutelas & Minutas</button>
+                    <button class="filter-btn" data-cat="expedientes">📁 Expedientes</button>
+                    <button class="filter-btn" data-cat="jurisprudencia">🏛️ Jurisprudencia</button>
+                    <button class="filter-btn" data-cat="clientes">👤 Clientes</button>
+                    <button class="filter-btn" data-cat="conceptos">💡 Conceptos</button>
                 </div>
 
                 <div class="notes-grid" id="vault-notes-grid">
@@ -488,8 +507,8 @@
             <div class="cartridges-view">
                 <div class="view-header">
                     <div>
-                        <h2>Cartuchos de Conocimiento (Shell Modular)</h2>
-                        <p>Alterna la especialidad de Sadigua o incorpora nuevas normas, PDF y códigos al corpus activo.</p>
+                        <h2>Cartuchos de Conocimiento (Shell Modular Soberano)</h2>
+                        <p>Especializa a Sadigua según la materia jurídica. Alterna entre marcos normativos en tiempo real.</p>
                     </div>
                     <button class="btn-primary" id="btn-reindex">🔄 Re-indexar RAG Híbrido</button>
                 </div>
@@ -525,7 +544,19 @@
                     </small>
                 </div>
 
-                <h4 class="section-subtitle">Archivos Originales en el Corpus</h4>
+                <div class="view-header" style="margin-top: 24px;">
+                    <div>
+                        <h4 class="section-subtitle" style="margin: 0;">Archivos Originales en el Corpus Activo</h4>
+                        <p style="font-size: 12.5px; color: var(--text-muted); margin: 3px 0 0 0;">Códigos, leyes, decretos y jurisprudencia indexados.</p>
+                    </div>
+                </div>
+
+                <!-- BUSCADOR DE DOCUMENTOS DEL CORPUS -->
+                <div style="position: relative; display: flex; align-items: center; margin-bottom: 14px;">
+                    <span style="position: absolute; left: 14px; font-size: 15px; color: var(--bio-emerald); pointer-events: none;">🔍</span>
+                    <input type="text" id="docs-search-input" class="form-control" style="padding-left: 42px; height: 38px; background: rgba(2, 11, 20, 0.7); border: 1px solid rgba(52, 232, 176, 0.25); border-radius: var(--radius-md); color: var(--ice-white); width: 100%; font-size: 13px;" placeholder="Filtrar archivos del corpus por nombre, tipo (.pdf, .md), carpeta o palabra clave..." />
+                </div>
+
                 <table class="docs-table" style="margin-bottom: 24px;">
                     <thead>
                         <tr>
@@ -808,6 +839,128 @@
                     Almacén Soberano: <code>data/normative_mutations.db</code> (SQLite) & <code>vault/jurisprudencia/</code>
                 </span>
                 <button class="btn-primary" id="btn-close-mutation-modal">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE GENERACIÓN DE MINUTAS Y MEMORIALES PROCESALES (TUTELAS & PQR) -->
+    <div class="modal-overlay" id="memorial-modal">
+        <div class="modal-content" style="max-width: 1040px; width: 95%; max-height: 90vh;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 26px;">📜</span>
+                    <div>
+                        <h3 style="margin: 0; color: var(--bio-mint); font-size: 16.5px;">Generador de Minutas y Tutelas — Taxonomía Canónica</h3>
+                        <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-muted);">Redacta memoriales judiciales listos para radicar con citas normativas y jurisprudencia unificada.</p>
+                    </div>
+                </div>
+                <button id="memorial-modal-close" class="modal-close-x">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 18px 24px; overflow-y: auto;">
+                <div class="memorial-layout-grid">
+                    <!-- COLUMNA IZQUIERDA: PARÁMETROS Y HECHOS -->
+                    <div class="memorial-form-col">
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label style="font-weight: 600; font-size: 12.5px; color: var(--bio-cyan);">Tipo de Memorial Judicial:</label>
+                            <div style="display: flex; gap: 10px; margin-top: 6px;">
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--ice-white); font-size: 13px;">
+                                    <input type="radio" name="memorial-tipo" value="TUTELA" checked id="radio-tipo-tutela">
+                                    <span>Acción de Tutela (Art. 86 C.P.)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--ice-white); font-size: 13px;">
+                                    <input type="radio" name="memorial-tipo" value="DERECHO_PETICION" id="radio-tipo-peticion">
+                                    <span>Derecho de Petición (Ley 1755)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label for="memorial-cat-select" style="font-weight: 600; font-size: 12.5px; color: var(--bio-cyan);">Categoría Taxonómica Específica:</label>
+                            <select id="memorial-cat-select" class="form-control" style="margin-top: 6px; background: rgba(7, 20, 43, 0.9);">
+                                <!-- Opciones cargadas dinámicamente -->
+                            </select>
+                        </div>
+
+                        <!-- Card Informativa de Subregla Jurídica -->
+                        <div id="memorial-cat-info" style="background: rgba(0, 229, 255, 0.06); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px;">
+                            <div style="font-size: 11.5px; color: var(--bio-cyan); font-weight: 600; margin-bottom: 3px;">⚖️ Marco Estatutario y Jurisprudencia Base:</div>
+                            <div id="memorial-cat-fundamento" style="font-size: 12px; color: var(--text-secondary); line-height: 1.4;"></div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div class="form-group">
+                                <label style="font-size: 12px; color: var(--text-muted);">Accionante / Peticionario:</label>
+                                <input type="text" id="memorial-accionante-nombre" class="form-control" placeholder="Nombre completo" value="Carlos Arturo Mora">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 12px; color: var(--text-muted);">Cédula / Documento:</label>
+                                <input type="text" id="memorial-accionante-id" class="form-control" placeholder="No. Identificación" value="79.485.920">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div class="form-group">
+                                <label style="font-size: 12px; color: var(--text-muted);">Entidad Accionada / Destinatario:</label>
+                                <input type="text" id="memorial-accionado-nombre" class="form-control" placeholder="ej: EPS Sanitas / Colpensiones" value="EPS Sanitas S.A.S.">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 12px; color: var(--text-muted);">Ciudad de Radicación:</label>
+                                <input type="text" id="memorial-ciudad" class="form-control" placeholder="Ciudad" value="Bogotá D.C.">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div class="form-group">
+                                <label style="font-size: 12px; color: var(--text-muted);">Correo Notificación Accionante:</label>
+                                <input type="email" id="memorial-accionante-correo" class="form-control" placeholder="correo@ejemplo.com" value="notificaciones@abogados.com">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size: 12px; color: var(--text-muted);">Correo Notificación Accionado:</label>
+                                <input type="email" id="memorial-accionado-correo" class="form-control" placeholder="juridica@entidad.com" value="notificacionesjudiciales@sanitas.com">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 10px;">
+                            <label style="font-size: 12px; color: var(--text-muted);">Hechos Clave del Caso (Separados por línea o número):</label>
+                            <textarea id="memorial-hechos" class="form-control" rows="3" placeholder="1. Paciente diagnosticado con patología crónica...&#10;2. Negativa injustificada de entrega de medicamento en farmacia aliada..."></textarea>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 10px;">
+                            <label style="font-size: 12px; color: var(--text-muted);">Pretensión Específica (Opcional - Sadigua generará la fórmula de estilo):</label>
+                            <input type="text" id="memorial-pretensiones" class="form-control" placeholder="ej: Ordenar la entrega inmediata del medicamento en 48 horas">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 14px;" id="memorial-medida-group">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #FDE047; font-size: 12.5px;">
+                                <input type="checkbox" id="memorial-medida-cautelar" checked>
+                                <span>⚠️ Solicitar Medida Cautelar Provisional de Urgencia (Art. 7 Decreto 2591/91)</span>
+                            </label>
+                        </div>
+
+                        <button class="btn-primary" id="btn-generate-memorial" style="width: 100%; height: 42px; font-weight: 700; background: linear-gradient(135deg, var(--bio-emerald), var(--bio-cyan)); border: none; color: #01061C;">
+                            ⚡ Redactar Memorial Soberano con Sadigua
+                        </button>
+                    </div>
+
+                    <!-- COLUMNA DERECHA: RESULTADO, COPIA Y DESCARGA WORD -->
+                    <div class="memorial-preview-col">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span class="badge badge-green" id="memorial-result-badge">Minuta Estructurada</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="filter-btn" id="btn-copy-memorial" style="padding: 4px 10px; font-size: 12px;" disabled>📋 Copiar</button>
+                                <button class="btn-primary" id="btn-download-docx" style="padding: 4px 12px; font-size: 12px; background: rgba(52, 232, 176, 0.2); border: 1px solid var(--bio-mint); color: #fff;" disabled>📥 Descargar Word (.docx)</button>
+                            </div>
+                        </div>
+
+                        <textarea id="memorial-output-text" class="form-control" style="height: 480px; font-family: 'Consolas', monospace; font-size: 12px; line-height: 1.5; resize: none; background: rgba(2, 11, 20, 0.95); border: 1px solid rgba(0, 229, 255, 0.2);" placeholder="El texto formal de la acción de tutela o derecho de petición redactado aparecerá aquí, listo para revisión, copia o descarga en formato Word (.docx)..." readonly></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; color: var(--text-muted);" id="memorial-vault-hint">
+                    Las minutas generadas se archivan automáticamente en <code>vault/minutas/</code>
+                </span>
+                <button class="filter-btn" id="btn-close-memorial-bottom">Cerrar</button>
             </div>
         </div>
     </div>

@@ -1,0 +1,28 @@
+name: "jep_transicional"
+display_name: "Jurisdicción Especial para la Paz (JEP) & Justicia Transicional"
+version: "1.0.0"
+domain: "justicia_transicional"
+jurisdiction: "Colombia / Sistema Integral de Verdad, Justicia, Reparación y No Repetición (SIVJRNR)"
+description: >
+  Cartucho dogmático especializado en Justicia Transicional, Sistema Restaurativo,
+  Derecho Internacional Humanitario (DIH), Estatuto de Roma y jurisprudencia
+  de la Jurisdicción Especial para la Paz (JEP). Cubre los Macrocasos 01 al 11,
+  régimen de condicionalidad, amnistías, indultos y Sanciones Propias (TOAR).
+
+corpus_structure:
+  - id: "marco_constitucional"
+    name: "Acto Legislativo 01 de 2017 y Sistema Integral"
+    path: "corpus/01_marco_constitucional"
+  - id: "leyes_procedimiento"
+    name: "Ley Estatutaria 1957 de 2019, Ley 1820 de 2016 y Ley 1922 de 2018"
+    path: "corpus/02_leyes_y_procedimiento"
+  - id: "macrocasos_jurisprudencia"
+    name: "Macrocasos JEP (01 al 11), Autos de Determinación de Hechos y TOAR"
+    path: "corpus/03_macrocasos_y_jurisprudencia"
+
+rag_parameters:
+  chunk_strategy: "legal_hierarchical"
+  chunk_size_tokens: 650
+  chunk_overlap_tokens: 120
+  mandatory_citations: true
+  min_relevance_score: 0.65

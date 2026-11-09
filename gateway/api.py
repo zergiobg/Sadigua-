@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import shutil
 from pathlib import Path
@@ -7,7 +8,7 @@ from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, Response
 from pydantic import BaseModel, Field
 
 from config.settings import settings
@@ -23,6 +24,7 @@ from core.memory.vault_manager import ObsidianVaultManager
 from core.agents.orchestrator import SadiguaOrchestrator
 from core.cartridges.manager import CartridgeManager
 from core.rag.mutation_engine import LexMutationEngine
+from core.generators.memorial_builder import LegalMemorialBuilder
 from gateway.anonymizer import PIIAnonymizer
 
 app = FastAPI(
@@ -44,8 +46,18 @@ cartridge_manager = CartridgeManager()
 vault_manager = ObsidianVaultManager()
 bm25_index = PureBM25Index()
 vector_store = LocalVectorStore()
+
+# Cargar o inicializar índice léxico BM25 para garantizar paridad y búsqueda exacta de normas
+if not bm25_index.load() and vector_store.documents:
+    bm25_index.index(vector_store.documents)
+    bm25_index.save()
+elif bm25_index.N == 0 and vector_store.documents:
+    bm25_index.index(vector_store.documents)
+    bm25_index.save()
+
 retriever = HybridRetriever(bm25_index=bm25_index, vector_store=vector_store)
 reranker = PrecisionReranker()
+memorial_builder = LegalMemorialBuilder()
 
 orchestrator = SadiguaOrchestrator(
     cartridge_name=settings.ACTIVE_CARTRIDGE,
@@ -115,6 +127,26 @@ class VaultNoteCreateRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     tags: Optional[List[str]] = None
     links: Optional[List[str]] = None
+
+class MemorialGenerateRequest(BaseModel):
+    tipo_accion: str = Field(default="TUTELA", description="'TUTELA' o 'DERECHO_PETICION'")
+    categoria_id: str = Field(default="SALUD_MEDICAMENTOS", description="ID de la taxonomía canónica")
+    ciudad: str = Field(default="Bogotá D.C.")
+    accionante_nombre: str = Field(..., description="Nombre del accionante o peticionario")
+    accionante_identificacion: str = Field(..., description="Cédula de ciudadanía o identificación")
+    accionante_correo: str = Field(..., description="Correo para notificaciones")
+    accionante_telefono: Optional[str] = Field(default="", description="Teléfono de contacto")
+    accionado_nombre: str = Field(..., description="Entidad accionada o requerida")
+    accionado_correo: Optional[str] = Field(default="", description="Correo de notificaciones de la entidad")
+    accionado_nit: Optional[str] = Field(default="", description="NIT opcional de la entidad")
+    hechos: Optional[str] = Field(default="", description="Relato cronológico de hechos")
+    pretensiones: Optional[str] = Field(default="", description="Pretensiones particulares")
+    solicitar_medida_cautelar: bool = Field(default=False, description="Pedir medida provisional de urgencia")
+    save_vault: bool = Field(default=True, description="Guardar automáticamente en la Bóveda de Obsidian")
+
+class MemorialDocxDownloadRequest(BaseModel):
+    markdown: str
+    doc_id: str = "memorial_procesal"
 
 # -------------------------------------------------------------
 # EVENTO DE INICIO
@@ -649,6 +681,40 @@ def save_vault_note_endpoint(req: VaultNoteCreateRequest):
         links=req.links
     )
     return {"status": "saved", "path": str(path)}
+
+# -------------------------------------------------------------
+# ENDPOINTS DE MINUTAS Y MEMORIALES PROCESALES (TUTELAS & PQR)
+# -------------------------------------------------------------
+@app.get("/api/memorials/taxonomy")
+def get_memorial_taxonomy():
+    """Retorna la taxonomía jurídica canónica de tutelas y peticiones."""
+    return memorial_builder.get_taxonomy()
+
+@app.post("/api/memorials/generate")
+def generate_legal_memorial(req: MemorialGenerateRequest):
+    """Genera una minuta procesal formal (Tutela o Derecho de Petición)."""
+    data = req.dict()
+    if req.tipo_accion.upper() == "TUTELA":
+        res = memorial_builder.generate_tutela_markdown(data)
+    else:
+        res = memorial_builder.generate_peticion_markdown(data)
+
+    if req.save_vault:
+        vault_path = memorial_builder.save_to_vault(res)
+        res["vault_path"] = vault_path
+
+    return res
+
+@app.post("/api/memorials/download-docx")
+def download_memorial_docx(req: MemorialDocxDownloadRequest):
+    """Convierte el memorial a formato Word (.docx) descargable."""
+    stream = memorial_builder.export_to_docx({"markdown": req.markdown})
+    safe_id = re.sub(r'[^a-zA-Z0-9_\-]', '_', req.doc_id)
+    return Response(
+        content=stream.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{safe_id}.docx"'}
+    )
 
 # -------------------------------------------------------------
 # SERVIDORES DE ARCHIVOS ESTÁTICOS DE LA INTERFAZ WEB

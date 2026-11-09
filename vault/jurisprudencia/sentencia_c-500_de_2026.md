@@ -6,7 +6,7 @@ fecha: "2026-11-09"
 supera_a: "[[art_culo_999_del_c_digo_de_comercio]]"
 id: "sentencia_c-500_de_2026"
 titulo: "Jurisprudencia Vigente: Sentencia C-500 de 2026"
-actualizado: "2026-11-09 14:32:22"
+actualizado: "2026-11-09 18:14:13"
 tags: ["precedente", "vigente", "unificacion"]
 ---
 # Jurisprudencia Vigente: Sentencia C-500 de 2026

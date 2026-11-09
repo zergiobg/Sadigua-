@@ -44,6 +44,11 @@ from tests.test_stop_and_ephemeral_memory import (
     test_ephemeral_query_does_not_save_to_memory,
     test_api_stop_and_delete_precedent_endpoints
 )
+from tests.test_memorial_builder import (
+    test_taxonomy_structure,
+    test_generate_tutela_markdown_and_docx,
+    test_generate_peticion_markdown
+)
 
 def run_all():
     tests = [
@@ -75,6 +80,9 @@ def run_all():
         ("Guardián de Parada: Cancelación de Síntesis en Vuelo (Stop)", test_stop_generation_orchestrator),
         ("Memoria Efímera: Consulta sin Guardar en Bóveda Obsidian", test_ephemeral_query_does_not_save_to_memory),
         ("API REST: Endpoints Stop e Inclusión/Remoción de Bóveda", test_api_stop_and_delete_precedent_endpoints),
+        ("Taxonomía Canónica de Tutelas y Derechos de Petición", test_taxonomy_structure),
+        ("Generador de Minutas: Acción de Tutela (Markdown & DOCX)", test_generate_tutela_markdown_and_docx),
+        ("Generador de Minutas: Derecho de Petición (Ley 1755)", test_generate_peticion_markdown),
     ]
 
     passed = 0

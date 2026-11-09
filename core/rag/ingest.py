@@ -128,8 +128,10 @@ class IngestionPipeline:
                 else:
                     chunk["vigencia_status"] = "VIGENTE"
 
-            # 4. Indexar en BM25
+            # 4. Indexar en BM25 y persistir a disco
             self.bm25_index.index(all_chunks)
+            if hasattr(self.bm25_index, "save"):
+                self.bm25_index.save()
             # 5. Limpiar base vectorial previa y re-vectorizar
             self.vector_store.clear()
             await self.vector_store.add_documents(all_chunks)

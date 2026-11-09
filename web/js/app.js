@@ -1454,18 +1454,50 @@ document.addEventListener("DOMContentLoaded", () => {
     // 3. CEREBRO OBSIDIANO (VAULT)
     // -------------------------------------------------------------
     const vaultGrid = document.getElementById("vault-notes-grid");
-    const filterBtns = document.querySelectorAll(".filter-btn");
+    const filterBtns = document.querySelectorAll(".filter-bar .filter-btn");
+    const vaultSearchInput = document.getElementById("vault-search-input");
+    const btnClearVaultSearch = document.getElementById("btn-clear-vault-search");
+    const btnVaultOpenMemorial = document.getElementById("btn-vault-open-memorial");
 
-    async function loadVaultNotes(category = "all") {
+    let currentVaultCategory = "all";
+    let currentVaultQuery = "";
+
+    async function loadVaultNotes(category = null) {
+        if (category !== null) {
+            currentVaultCategory = category;
+        }
         try {
-            const url = category === "all" ? "/api/vault/notes" : `/api/vault/notes?category=${category}`;
+            const url = currentVaultCategory === "all" ? "/api/vault/notes" : `/api/vault/notes?category=${currentVaultCategory}`;
             const res = await fetch(url);
             const notes = await res.json();
             state.notes = notes;
-            renderVaultNotes(notes);
+            applyVaultFilters();
         } catch (e) {
             console.error("Error cargando notas de la bóveda:", e);
         }
+    }
+
+    function applyVaultFilters() {
+        if (!state.notes) return;
+        let filtered = state.notes;
+
+        if (currentVaultCategory !== "all") {
+            filtered = filtered.filter(n => n.category === currentVaultCategory);
+        }
+
+        if (currentVaultQuery) {
+            const q = currentVaultQuery.toLowerCase();
+            filtered = filtered.filter(n => 
+                (n.title && n.title.toLowerCase().includes(q)) ||
+                (n.snippet && n.snippet.toLowerCase().includes(q)) ||
+                (n.id && n.id.toLowerCase().includes(q)) ||
+                (n.subcategory && n.subcategory.toLowerCase().includes(q)) ||
+                (n.entidad_accionada && n.entidad_accionada.toLowerCase().includes(q)) ||
+                (n.tags && n.tags.some(t => t.toLowerCase().includes(q)))
+            );
+        }
+
+        renderVaultNotes(filtered);
     }
 
     function renderVaultNotes(notes) {
@@ -1476,8 +1508,8 @@ document.addEventListener("DOMContentLoaded", () => {
             vaultGrid.innerHTML = `
                 <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary);">
                     <p style="font-size: 32px; margin-bottom: 8px;">📂</p>
-                    <p style="font-weight: 600;">No hay notas registradas en esta categoría.</p>
-                    <p style="font-size: 13px;">Haz clic en '+ Nueva Ficha' para registrar un expediente o cliente.</p>
+                    <p style="font-weight: 600;">No se encontraron notas con el filtro o búsqueda actual.</p>
+                    <p style="font-size: 13px;">Prueba borrando el término de búsqueda o seleccionando 'Todos'.</p>
                 </div>
             `;
             return;
@@ -1485,17 +1517,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
         notes.forEach(note => {
             const card = document.createElement("div");
-            card.className = "note-card";
+            const catClass = `cat-${note.category || 'general'}`;
+            card.className = `note-card ${catClass}`;
+
+            let catLabel = note.category;
+            if (note.category === "consultas") catLabel = "⚡ Precedente";
+            else if (note.category === "minutas") {
+                const sub = note.subcategory ? note.subcategory.replace(/_/g, ' ') : 'Tutela';
+                catLabel = `📜 Minuta: ${sub}`;
+            } else if (note.category === "jurisprudencia") catLabel = "🏛️ Jurisprudencia";
+            else if (note.category === "expedientes") catLabel = "📁 Expediente";
+            else if (note.category === "clientes") catLabel = "👤 Cliente";
+            else if (note.category === "conceptos") catLabel = "💡 Concepto";
+
+            let metaRowHtml = "";
+            if (note.entidad_accionada || note.tipo_accion) {
+                metaRowHtml = `<div class="note-meta-row">`;
+                if (note.tipo_accion) {
+                    metaRowHtml += `<span class="note-meta-chip">⚖️ <strong>${escapeHtml(note.tipo_accion)}</strong></span>`;
+                }
+                if (note.entidad_accionada) {
+                    metaRowHtml += `<span class="note-meta-chip">🏛️ ${escapeHtml(note.entidad_accionada)}</span>`;
+                }
+                metaRowHtml += `</div>`;
+            }
+
             card.innerHTML = `
                 <div class="note-header">
-                    <span class="note-category">${escapeHtml(note.category)}</span>
+                    <span class="note-category">${escapeHtml(catLabel)}</span>
                     <span style="font-size: 11px; color: var(--text-muted);">${escapeHtml(note.id)}</span>
                 </div>
                 <h4 class="note-title">${escapeHtml(note.title)}</h4>
+                ${metaRowHtml}
                 <p class="note-snippet">${escapeHtml(note.snippet)}</p>
                 <div class="note-footer">
                     <span>📅 ${escapeHtml(note.updated || 'Reciente')}</span>
-                    <span style="color: var(--primary-blue); font-weight: 500;">Ver Ficha ➔</span>
+                    <span style="color: var(--bio-cyan); font-weight: 600;">Ver Documento ➔</span>
                 </div>
             `;
             card.addEventListener("click", () => openNoteModal(note.category, note.id));
@@ -1503,13 +1560,38 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Eventos de filtro y buscador en Bóveda
     filterBtns.forEach(btn => {
         btn.addEventListener("click", () => {
             filterBtns.forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
-            loadVaultNotes(btn.dataset.cat);
+            currentVaultCategory = btn.dataset.cat || "all";
+            loadVaultNotes(currentVaultCategory);
         });
     });
+
+    if (vaultSearchInput) {
+        vaultSearchInput.addEventListener("input", (e) => {
+            currentVaultQuery = e.target.value.trim();
+            if (btnClearVaultSearch) {
+                btnClearVaultSearch.style.display = currentVaultQuery ? "block" : "none";
+            }
+            applyVaultFilters();
+        });
+    }
+
+    if (btnClearVaultSearch) {
+        btnClearVaultSearch.addEventListener("click", () => {
+            if (vaultSearchInput) vaultSearchInput.value = "";
+            currentVaultQuery = "";
+            btnClearVaultSearch.style.display = "none";
+            applyVaultFilters();
+        });
+    }
+
+    if (btnVaultOpenMemorial) {
+        btnVaultOpenMemorial.addEventListener("click", () => openMemorialModal());
+    }
 
     // Modal de notas
     const noteModal = document.getElementById("note-modal");
@@ -1616,17 +1698,34 @@ document.addEventListener("DOMContentLoaded", () => {
         cartridges.forEach(cart => {
             const card = document.createElement("div");
             card.className = `cartridge-card ${cart.is_active ? 'active' : ''}`;
+            
+            let icon = "⚖️";
+            let domainTag = "DERECHO GENERAL";
+            if (cart.id === "jep_transicional") {
+                icon = "🕊️";
+                domainTag = "JUSTICIA TRANSICIONAL • JEP";
+            } else if (cart.id === "legal_co") {
+                icon = "🏛️";
+                domainTag = "LITIGIO CIVIL & CONSTITUCIONAL";
+            } else if (cart.id === "telco_crm") {
+                icon = "📡";
+                domainTag = "TELECOMUNICACIONES & CRM";
+            }
+
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span class="badge ${cart.is_active ? 'badge-blue' : ''}">${cart.is_active ? 'Activo' : 'Disponible'}</span>
-                    <span style="font-size: 12px; color: var(--text-muted);">${cart.doc_count} documentos</span>
+                    <span class="cartridge-domain-badge ${cart.is_active ? 'badge-active-glow' : 'badge-inactive'}">${escapeHtml(domainTag)}</span>
+                    <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">📁 ${cart.doc_count} docs indexados</span>
                 </div>
-                <h3 class="cartridge-title">${escapeHtml(cart.name)}</h3>
-                <p style="font-size: 13px; color: var(--text-secondary); flex: 1;">${escapeHtml(cart.description)}</p>
-                <div>
+                <div style="display: flex; align-items: center; gap: 10px; margin: 4px 0;">
+                    <span style="font-size: 26px;">${icon}</span>
+                    <h3 class="cartridge-title" style="margin: 0;">${escapeHtml(cart.name)}</h3>
+                </div>
+                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.45; flex: 1;">${escapeHtml(cart.description)}</p>
+                <div style="margin-top: 10px;">
                     ${cart.is_active 
-                        ? `<button class="btn-primary" style="width: 100%; opacity: 0.8;" disabled>✓ En Ejecución</button>`
-                        : `<button class="btn-primary btn-switch-cart" data-id="${cart.id}" style="width: 100%;">Activar Cartucho</button>`}
+                        ? `<button class="btn-primary" style="width: 100%; background: linear-gradient(135deg, rgba(52, 232, 176, 0.25), rgba(0, 229, 255, 0.2)); border: 1px solid var(--bio-mint); color: #fff; cursor: default;" disabled>✓ Cartucho Activo en Memoria</button>`
+                        : `<button class="btn-primary btn-switch-cart" data-id="${cart.id}" style="width: 100%; background: rgba(0, 229, 255, 0.15); border: 1px solid var(--bio-cyan); color: var(--bio-cyan);">⚡ Conmutar y Cargar en Memoria</button>`}
                 </div>
             `;
             cartridgesList.appendChild(card);
@@ -1636,7 +1735,7 @@ document.addEventListener("DOMContentLoaded", () => {
             btn.addEventListener("click", async () => {
                 const id = btn.dataset.id;
                 btn.disabled = true;
-                btn.textContent = "Conmutando...";
+                btn.textContent = "Conmutando e Indexando...";
                 try {
                     const res = await fetch("/api/cartridges/switch", {
                         method: "POST",
@@ -1647,11 +1746,30 @@ document.addEventListener("DOMContentLoaded", () => {
                         await loadSystemStatus();
                         await loadCartridges();
                         await loadDocuments();
+                        if (typeof loadIndexData === "function") await loadIndexData();
                     }
                 } catch (e) {
                     alert("Error conmutando cartucho: " + e.message);
                 }
             });
+        });
+    }
+
+    const docsSearchInput = document.getElementById("docs-search-input");
+    if (docsSearchInput) {
+        docsSearchInput.addEventListener("input", (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            if (!state.documents) return;
+            if (!q) {
+                renderDocuments(state.documents);
+            } else {
+                const filtered = state.documents.filter(d => 
+                    d.filename.toLowerCase().includes(q) ||
+                    d.relative_path.toLowerCase().includes(q) ||
+                    d.extension.toLowerCase().includes(q)
+                );
+                renderDocuments(filtered);
+            }
         });
     }
 
@@ -2046,6 +2164,208 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (err) {
             console.error("Error cambiando modelo rápido:", err);
+        }
+    });
+
+    // -------------------------------------------------------------
+    // 5. GENERADOR DE MINUTAS Y MEMORIALES PROCESALES (TUTELAS & PQR)
+    // -------------------------------------------------------------
+    const memorialModal = document.getElementById("memorial-modal");
+    const btnOpenMemorial = document.getElementById("btn-open-memorial-modal");
+    const pillQuickMemorial = document.getElementById("pill-quick-memorial");
+    const memorialModalClose = document.getElementById("memorial-modal-close");
+    const btnCloseMemorialBottom = document.getElementById("btn-close-memorial-bottom");
+
+    const radioTipoTutela = document.getElementById("radio-tipo-tutela");
+    const radioTipoPeticion = document.getElementById("radio-tipo-peticion");
+    const memorialCatSelect = document.getElementById("memorial-cat-select");
+    const memorialCatFundamento = document.getElementById("memorial-cat-fundamento");
+    const memorialMedidaGroup = document.getElementById("memorial-medida-group");
+
+    const memorialAccionanteNombre = document.getElementById("memorial-accionante-nombre");
+    const memorialAccionanteId = document.getElementById("memorial-accionante-id");
+    const memorialAccionadoNombre = document.getElementById("memorial-accionado-nombre");
+    const memorialCiudad = document.getElementById("memorial-ciudad");
+    const memorialAccionanteCorreo = document.getElementById("memorial-accionante-correo");
+    const memorialAccionadoCorreo = document.getElementById("memorial-accionado-correo");
+    const memorialHechos = document.getElementById("memorial-hechos");
+    const memorialPretensiones = document.getElementById("memorial-pretensiones");
+    const chkMedidaCautelar = document.getElementById("memorial-medida-cautelar");
+
+    const btnGenerateMemorial = document.getElementById("btn-generate-memorial");
+    const memorialOutputText = document.getElementById("memorial-output-text");
+    const memorialResultBadge = document.getElementById("memorial-result-badge");
+    const btnCopyMemorial = document.getElementById("btn-copy-memorial");
+    const btnDownloadDocx = document.getElementById("btn-download-docx");
+
+    let memorialTaxonomy = null;
+    let currentMemorialDocId = "minuta_procesal";
+
+    async function loadMemorialTaxonomy() {
+        if (memorialTaxonomy) return memorialTaxonomy;
+        try {
+            const res = await fetch("/api/memorials/taxonomy");
+            if (res.ok) {
+                memorialTaxonomy = await res.json();
+                return memorialTaxonomy;
+            }
+        } catch (e) {
+            console.error("Error cargando taxonomía de memoriales:", e);
+        }
+        return null;
+    }
+
+    function updateMemorialCategories() {
+        if (!memorialTaxonomy || !memorialCatSelect) return;
+        const isTutela = radioTipoTutela && radioTipoTutela.checked;
+        const dict = isTutela ? memorialTaxonomy.tutelas : memorialTaxonomy.peticiones;
+
+        memorialCatSelect.innerHTML = "";
+        Object.keys(dict).forEach(k => {
+            const opt = document.createElement("option");
+            opt.value = k;
+            opt.textContent = dict[k].nombre;
+            memorialCatSelect.appendChild(opt);
+        });
+
+        if (memorialMedidaGroup) {
+            memorialMedidaGroup.style.display = isTutela ? "block" : "none";
+        }
+
+        updateSelectedCategoryInfo();
+    }
+
+    function updateSelectedCategoryInfo() {
+        if (!memorialTaxonomy || !memorialCatSelect) return;
+        const isTutela = radioTipoTutela && radioTipoTutela.checked;
+        const catKey = memorialCatSelect.value;
+        const dict = isTutela ? memorialTaxonomy.tutelas : memorialTaxonomy.peticiones;
+        const item = dict[catKey];
+
+        if (item && memorialCatFundamento) {
+            if (isTutela) {
+                memorialCatFundamento.innerHTML = `<strong>Derechos:</strong> ${item.derechos.join(", ")}.<br><strong>Citas Clave:</strong> ${item.fundamentos_clave}`;
+            } else {
+                memorialCatFundamento.innerHTML = `<strong>Término de Respuesta:</strong> ${item.plazo_legal}.<br><strong>Fundamento:</strong> ${item.fundamento_legal}<br><small style="color: #FDE047;">${item.consecuencia_silencio}</small>`;
+            }
+        }
+    }
+
+    async function openMemorialModal() {
+        if (!memorialModal) return;
+        memorialModal.classList.add("active");
+        const tax = await loadMemorialTaxonomy();
+        if (tax) {
+            updateMemorialCategories();
+        }
+    }
+
+    function closeMemorialModal() {
+        if (!memorialModal) return;
+        memorialModal.classList.remove("active");
+    }
+
+    btnOpenMemorial?.addEventListener("click", openMemorialModal);
+    pillQuickMemorial?.addEventListener("click", openMemorialModal);
+    memorialModalClose?.addEventListener("click", closeMemorialModal);
+    btnCloseMemorialBottom?.addEventListener("click", closeMemorialModal);
+
+    radioTipoTutela?.addEventListener("change", updateMemorialCategories);
+    radioTipoPeticion?.addEventListener("change", updateMemorialCategories);
+    memorialCatSelect?.addEventListener("change", updateSelectedCategoryInfo);
+
+    btnGenerateMemorial?.addEventListener("click", async () => {
+        const isTutela = radioTipoTutela && radioTipoTutela.checked;
+        const payload = {
+            tipo_accion: isTutela ? "TUTELA" : "DERECHO_PETICION",
+            categoria_id: memorialCatSelect.value,
+            ciudad: memorialCiudad.value.trim() || "Bogotá D.C.",
+            accionante_nombre: memorialAccionanteNombre.value.trim() || "ACCIONANTE",
+            accionante_identificacion: memorialAccionanteId.value.trim() || "00.000.000",
+            accionante_correo: memorialAccionanteCorreo.value.trim() || "correo@ejemplo.com",
+            accionado_nombre: memorialAccionadoNombre.value.trim() || "ENTIDAD ACCIONADA",
+            accionado_correo: memorialAccionadoCorreo.value.trim() || "",
+            hechos: memorialHechos.value.trim(),
+            pretensiones: memorialPretensiones.value.trim(),
+            solicitar_medida_cautelar: isTutela ? (chkMedidaCautelar ? chkMedidaCautelar.checked : false) : false,
+            save_vault: true
+        };
+
+        btnGenerateMemorial.disabled = true;
+        btnGenerateMemorial.textContent = "⚙️ Redactando memorial con técnica constitucional...";
+
+        try {
+            const res = await fetch("/api/memorials/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                currentMemorialDocId = data.doc_id;
+                memorialOutputText.value = data.markdown;
+                memorialResultBadge.textContent = `✓ ${data.tipo} Lista: ${data.categoria_nombre}`;
+                memorialResultBadge.className = "badge badge-green";
+
+                btnCopyMemorial.disabled = false;
+                btnDownloadDocx.disabled = false;
+
+                // Actualizar Bóveda en segundo plano
+                loadVaultNotes();
+            } else {
+                alert("Error generando minuta.");
+            }
+        } catch (e) {
+            alert("Error de conexión al generar minuta: " + e.message);
+        } finally {
+            btnGenerateMemorial.disabled = false;
+            btnGenerateMemorial.textContent = "⚡ Redactar Memorial Soberano con Sadigua";
+        }
+    });
+
+    btnCopyMemorial?.addEventListener("click", () => {
+        if (!memorialOutputText.value) return;
+        navigator.clipboard.writeText(memorialOutputText.value).then(() => {
+            const orig = btnCopyMemorial.textContent;
+            btnCopyMemorial.textContent = "✓ ¡Copiado!";
+            setTimeout(() => { btnCopyMemorial.textContent = orig; }, 2000);
+        });
+    });
+
+    btnDownloadDocx?.addEventListener("click", async () => {
+        if (!memorialOutputText.value) return;
+        btnDownloadDocx.disabled = true;
+        btnDownloadDocx.textContent = "Exportando Word...";
+        try {
+            const res = await fetch("/api/memorials/download-docx", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    markdown: memorialOutputText.value,
+                    doc_id: currentMemorialDocId
+                })
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.style.display = "none";
+                a.href = url;
+                a.download = `${currentMemorialDocId}.docx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } else {
+                alert("Error descargando archivo .docx");
+            }
+        } catch (e) {
+            alert("Error descargando .docx: " + e.message);
+        } finally {
+            btnDownloadDocx.disabled = false;
+            btnDownloadDocx.textContent = "📥 Descargar Word (.docx)";
         }
     });
 

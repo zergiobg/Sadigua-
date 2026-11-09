@@ -1,6 +1,8 @@
 import math
 import re
-from typing import List, Dict, Any, Tuple
+from pathlib import Path
+from typing import List, Dict, Any, Tuple, Optional
+from config.settings import settings
 
 LEGAL_QUERY_STOPWORDS = {
     "que", "qué", "de", "la", "el", "los", "las", "un", "una", "unos", "unas",
@@ -30,6 +32,41 @@ class PureBM25Index:
         self.doc_freqs: Dict[str, int] = {}
         self.idf: Dict[str, float] = {}
         self.N: int = 0
+
+    def save(self, filepath: Optional[Path] = None):
+        """Persiste el índice BM25 serializado a disco en JSON."""
+        import json
+        p = filepath or (settings.DATA_PATH / "bm25.json")
+        p.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "corpus": self.corpus,
+            "N": self.N,
+            "avg_doc_len": self.avg_doc_len,
+            "doc_lengths": self.doc_lengths,
+            "idf": self.idf,
+            "doc_freqs": self.doc_freqs,
+            "tokenized_corpus": self.tokenized_corpus
+        }
+        p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    def load(self, filepath: Optional[Path] = None) -> bool:
+        """Carga el índice BM25 persistido desde disco."""
+        import json
+        p = filepath or (settings.DATA_PATH / "bm25.json")
+        if not p.exists():
+            return False
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            self.corpus = data.get("corpus", [])
+            self.N = data.get("N", 0)
+            self.avg_doc_len = data.get("avg_doc_len", 0.0)
+            self.doc_lengths = data.get("doc_lengths", [])
+            self.idf = data.get("idf", {})
+            self.doc_freqs = data.get("doc_freqs", {})
+            self.tokenized_corpus = data.get("tokenized_corpus", [])
+            return self.N > 0
+        except Exception:
+            return False
 
     def _tokenize(self, text: str) -> List[str]:
         # Tokenización para español: minúsculas, palabras y números

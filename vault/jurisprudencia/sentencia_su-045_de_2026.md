@@ -6,7 +6,7 @@ fecha: "2026-11-09"
 supera_a: "[[sentencia_t-200_de_2018]]"
 id: "sentencia_su-045_de_2026"
 titulo: "Jurisprudencia Vigente: Sentencia SU-045 de 2026"
-actualizado: "2026-11-09 14:32:22"
+actualizado: "2026-11-09 18:14:12"
 tags: ["precedente", "vigente", "unificacion"]
 ---
 # Jurisprudencia Vigente: Sentencia SU-045 de 2026

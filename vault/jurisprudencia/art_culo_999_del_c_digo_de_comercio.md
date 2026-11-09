@@ -7,7 +7,7 @@ superado_por: "[[sentencia_c-500_de_2026]]"
 superceded_by: "Sentencia C-500 de 2026"
 id: "art_culo_999_del_c_digo_de_comercio"
 titulo: "Precedente Histórico: Artículo 999 del Código de Comercio (SUPERADO)"
-actualizado: "2026-11-09 14:32:22"
+actualizado: "2026-11-09 18:14:13"
 tags: ["precedente_historico", "superado", "archivo"]
 ---
 # Precedente Histórico: Artículo 999 del Código de Comercio (SUPERADO)
